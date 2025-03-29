@@ -1,7 +1,292 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K Shiv Kumar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .profile-img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .social-links {
+            margin: 20px 0;
+        }
+        
+        .social-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 1.1rem;
+            transition: opacity 0.3s;
+        }
+        
+        .social-links a:hover {
+            opacity: 0.8;
+        }
+        
+        section {
+            padding: 60px 0;
+        }
+        
+        section h2 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+        }
+        
+        .about-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .about-content p {
+            margin-bottom: 20px;
+        }
+        
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .skill-tag {
+            background-color: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+        }
+        
+        .projects {
+            background-color: #f1f1f1;
+        }
+        
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .project-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .project-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        
+        .project-info {
+            padding: 20px;
+        }
+        
+        .project-info h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .project-links {
+            margin-top: 15px;
+        }
+        
+        .project-links a {
+            display: inline-block;
+            margin-right: 15px;
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .contact {
+            text-align: center;
+        }
+        
+        .contact p {
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+        
+        .contact-btn {
+            display: inline-block;
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .contact-btn:hover {
+            background-color: #1a252f;
+        }
+        
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .project-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header {
+                padding: 40px 0;
+            }
+            
+            section {
+                padding: 40px 0;
+            }
+        }
+    </style>
+</head>
 <body>
-<h1>Hello Everyone...!!!</h1>
-<p>Website incoming...!!!.</p>
+    <header>
+        <div class="container">
+            <img src="https://via.placeholder.com/150" alt="Profile" class="profile-img">
+            <h1>K Shiv Kumar</h1>
+            <p class="tagline">Research Scholar (IIT Hyderabad) | Systems | Programmable Networks (eBPF, P4) | Compilers</p>
+            <div class="social-links">
+				<a href="https://scholar.google.com/citations?user=a5Js3uMAAAAJ&hl=en" target="_blank">	Google Scholar</a>
+                <a href="https://github.com/kumarkshiv" target="_blank">GitHub</a>
+                <a href="https://linkedin.com/in/kumarkshiv" target="_blank">LinkedIn</a>
+                <a href="https://twitter.com/kumarkshivoid" target="_blank">Twitter</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="about" id="about">
+        <div class="container">
+            <h2>About Me</h2>
+            <div class="about-content">
+                <p>Hello! I am a PhD student at IIT Hyderabad, working on systems, programmable networks and compilers. My research focuses on developing systems to analyse and validate network function (NF) behavior. I enjoy exploring new technologies.</p>
+                <!--<p>With a background in [Your Background], I bring a unique perspective to software development that focuses on [Your Approach/Philosophy].</p>-->
+                <div class="skills">
+                    <span class="skill-tag">eBPF</span>
+                    <span class="skill-tag">P4</span>
+                    <span class="skill-tag">C/C++</span>
+                    <span class="skill-tag">Python</span>
+                    <!-- Add more skills as needed -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="projects" id="projects">
+        <div class="container">
+            <h2>Publications</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <img src="https://via.placeholder.com/300x180" alt=" " class="project-img">
+                    <div class="project-info">
+                        <h3>DBVal:Validating P4 data plane runtime behavior</h3>
+                        <p>...</p>
+                        <div class="project-links">
+                            <a href="https://dl.acm.org/doi/10.1145/3482898.3483352" target="_blank">Paper</a>
+                            <a href="#" target="_blank">GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="project-card">
+                    <img src="https://via.placeholder.com/300x180" alt=" " class="project-img">
+                    <div class="project-info">
+                        <h3>In-Network Probabilistic Monitoring Primitives under the Influence of Adversarial Network Inputs</h3>
+                        <p>...</p>
+                        <div class="project-links">
+                            <a href="https://dl.acm.org/doi/10.1145/3600061.3600086" target="_blank">Paper</a>
+                            <a href="#" target="_blank">GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="project-card">
+                    <img src="https://via.placeholder.com/300x180" alt=" " class="project-img">
+                    <div class="project-info">
+                        <h3>...</h3>
+                        <p>...</p>
+                        <div class="project-links">
+                            <a href="#" target="_blank">...</a>
+                            <a href="#" target="_blank">...</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2>Get In Touch</h2>
+            <p>I'm always interested in new opportunities, collaborations, or just a friendly chat about technology. Feel free to reach out!</p>
+            <a href="mailto:kumar.shiv301@gmail.com" class="contact-btn">Say Hello</a>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 K Shiv Kumar. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
 </html>
