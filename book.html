@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Reading List - Your Name</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .main-nav {
+            margin-bottom: 20px;
+        }
+        
+        .main-nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+        
+        .main-nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.3s;
+        }
+        
+        .main-nav a:hover {
+            opacity: 0.8;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        section {
+            padding: 60px 0;
+        }
+        
+        section h2 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+        }
+        
+        .books-intro {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            text-align: center;
+        }
+        
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .book-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .book-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .book-cover {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+        }
+        
+        .book-info {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .book-info h3 {
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .book-author {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .book-description {
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+        
+        .reading-status {
+            font-weight: 500;
+            margin-top: auto;
+        }
+        
+        .status-current {
+            color: #3498db;
+        }
+        
+        .status-completed {
+            color: #27ae60;
+        }
+        
+        .status-upcoming {
+            color: #e67e22;
+        }
+        
+        .reading-notes {
+            background-color: #f1f1f1;
+        }
+        
+        .notes-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .daily-entry {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .entry-date {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        .book-title-ref {
+            font-weight: 500;
+            color: #3498db;
+        }
+        
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .book-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-nav ul {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            header {
+                padding: 20px 0;
+            }
+            
+            section {
+                padding: 40px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="index.html#about">About</a></li>
+                    <li><a href="index.html#projects">Projects</a></li>
+                    <li><a href="books.html">Reading List</a></li>
+                    <li><a href="index.html#contact">Contact</a></li>
+                </ul>
+            </nav>
+            <h1>My Reading Journey</h1>
+            <p class="subtitle">Books I'm exploring and thoughts along the way</p>
+        </div>
+    </header>
+
+    <section class="current-books">
+        <div class="container">
+            <h2>Currently Reading</h2>
+            <p class="books-intro">Here are the books I'm currently enjoying. I try to read diverse genres to expand my perspectives and knowledge.</p>
+            
+            <div class="book-grid">
+                <div class="book-card">
+                    <img src="https://via.placeholder.com/300x450" alt="Book Cover" class="book-cover">
+                    <div class="book-info">
+                        <h3>Book Title 1</h3>
+                        <p class="book-author">by Author Name</p>
+                        <p class="book-description">A brief description of this book and why you chose to read it. What makes it interesting or valuable to you?</p>
+                        <p class="reading-status status-current">Currently on page 125 of 320</p>
+                    </div>
+                </div>
+                
+                <div class="book-card">
+                    <img src="https://via.placeholder.com/300x450" alt="Book Cover" class="book-cover">
+                    <div class="book-info">
+                        <h3>Book Title 2</h3>
+                        <p class="book-author">by Author Name</p>
+                        <p class="book-description">A brief description of this book and your initial impressions. Perhaps mention what you hope to gain from it.</p>
+                        <p class="reading-status status-current">Currently on page 78 of 256</p>
+                    </div>
+                </div>
+                
+                <div class="book-card">
+                    <img src="https://via.placeholder.com/300x450" alt="Book Cover" class="book-cover">
+                    <div class="book-info">
+                        <h3>Book Title 3</h3>
+                        <p class="book-author">by Author Name</p>
+                        <p class="book-description">A brief description of this book. Why did you start reading it? What's been surprising so far?</p>
+                        <p class="reading-status status-upcoming">Starting next week</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="finished-books">
+        <div class="container">
+            <h2>Recently Completed</h2>
+            
+            <div class="book-grid">
+                <div class="book-card">
+                    <img src="https://via.placeholder.com/300x450" alt="Book Cover" class="book-cover">
+                    <div class="book-info">
+                        <h3>Book Title 4</h3>
+                        <p class="book-author">by Author Name</p>
+                        <p class="book-description">A short review of this book that you've completed. What were your key takeaways? Would you recommend it?</p>
+                        <p class="reading-status status-completed">Completed on April 1, 2025</p>
+                    </div>
+                </div>
+                
+                <div class="book-card">
+                    <img src="https://via.placeholder.com/300x450" alt="Book Cover" class="book-cover">
+                    <div class="book-info">
+                        <h3>Book Title 5</h3>
+                        <p class="book-author">by Author Name</p>
+                        <p class="book-description">Your thoughts on this book after finishing it. How did it change your perspective or knowledge on its subject matter?</p>
+                        <p class="reading-status status-completed">Completed on March 15, 2025</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="reading-notes">
+        <div class="container">
+            <h2>Reading Journal</h2>
+            <div class="notes-content">
+                <div class="daily-entry">
+                    <p class="entry-date">April 8, 2025</p>
+                    <p>Today I read chapters 7-9 of <span class="book-title-ref">Book Title 1</span>. The author's perspective on [topic] was particularly insightful. I found myself reflecting on how this applies to my own work, especially when [specific example].</p>
+                    <p>Favorite quote from today's reading: <em>"Insert meaningful quote here that resonated with you."</em></p>
+                </div>
+                
+                <div class="daily-entry">
+                    <p class="entry-date">April 6, 2025</p>
+                    <p>Started <span class="book-title-ref">Book Title 2</span> today and immediately connected with the main concept of [idea]. The author's background in [field] brings a fresh perspective that I hadn't considered before.</p>
+                    <p>I'm curious to see how the arguments develop in later chapters, particularly around [specific topic you're interested in].</p>
+                </div>
+                
+                <div class="daily-entry">
+                    <p class="entry-date">April 3, 2025</p>
+                    <p>Finished <span class="book-title-ref">Book Title 4</span> this evening. Overall, I'd give it 4/5 stars. The strengths were definitely in the [specific aspects], though I found the section on [topic] a bit lacking in depth.</p>
+                    <p>Key takeaways I'll be implementing:</p>
+                    <ul>
+                        <li>Specific idea or practice from the book</li>
+                        <li>Another concept you found valuable</li>
+                        <li>A perspective shift that occurred while reading</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Your Name. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
