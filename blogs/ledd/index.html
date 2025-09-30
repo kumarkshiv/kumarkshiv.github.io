@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEDD - Learn Every Damn Day</title>
+  <style>
+    /* Reset */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: #111;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; }
+    header p { font-size: 1rem; }
+
+    /* Main */
+    main {
+      flex: 1;
+      max-width: 900px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+
+    section.intro {
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    section.index h2 {
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    .post {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .post h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .post h3 a {
+      color: #0073e6;
+      text-decoration: none;
+    }
+    .post h3 a:hover {
+      text-decoration: underline;
+    }
+    .post small {
+      display: block;
+      color: #666;
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+    }
+    .post p {
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      background: #111;
+      color: #bbb;
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: #bbb;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsiveness */
+    @media (max-width: 768px) {
+      header h1 { font-size: 1.6rem; }
+      header p { font-size: 0.9rem; }
+      .post { padding: 0.8rem; }
+    }
+
+    @media (max-width: 480px) {
+      header h1 { font-size: 1.3rem; }
+      header p { font-size: 0.8rem; }
+      main { padding: 0 0.5rem; }
+      .post h3 { font-size: 1rem; }
+      .post p { font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LED<sup>2</sup></h1>
+    <p>Learn Every Damn Day</p>
+  </header>
+
+  <main>
+    <section class="intro">
+      <!--<p>Welcome to LED<sup>2</sup> — where I share something new I learn every day completely with the help of AI.</p>-->
+	  <p>Welcome to LED<sup>2</sup> — where I share something I learn every day.</p>
+      <p><a href="#post-1">👉 Start Here</a></p>
+    </section>
+
+    <section class="index">
+      <h2>Blog Series Index</h2>
+
+      <div class="post" id="post-1">
+        <h3><a href="post1.html">How I use AI as my companion for my learnings.</a></h3>
+        <small>Published: Sept 30, 2025 • Tags: AI for mearning, LLMs, Gemini, ChatGPT</small>
+        <p>My learning experience with AI.</p>
+      </div>
+
+      <!-- <div class="post">
+        <h3><a href="post2.html">Day 2: Learning to Learn</a></h3>
+        <small>Published: Sept 2, 2025 • Tags: Productivity, Learning</small>
+        <p>Breaking down effective strategies to retain and apply what you learn.</p>
+      </div> -->
+
+      <!-- Add more posts -->
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 LEDD | Learn Every Damn Day</p>
+    <p><a href="#">Subscribe</a> | <a href="#">About</a></p>
+  </footer>
+</body>
+</html>
