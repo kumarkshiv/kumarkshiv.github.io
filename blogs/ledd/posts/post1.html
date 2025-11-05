@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Day 1: The Power of Small Wins | LED2</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>How XDP (eXtended Data Path) works? | LED2</title>
   <link rel="stylesheet" href="../assets/css/style.css"> <!-- External stylesheet -->
   <style>
     /* Reset */
@@ -75,6 +75,38 @@
     .post p {
       margin-top: 0.5rem;
       font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    /* ASCII diagram styling */
+    .diagram {
+      background: #0f1720;
+      color: #e6f2ff;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: Menlo, Monaco, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.25;
+      margin-top: 1rem;
+      border: 1px solid #cbd5e1;
+    }
+
+    .explain ol {
+      margin: 0.75rem 0 0 1.2rem;
+      padding: 0;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .note {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #f1f7f6;
+      border-left: 4px solid #116466;
+      border-radius: 4px;
+      color: #0f1720;
+      font-size: 0.95rem;
     }
 
     /* Footer */
@@ -106,30 +138,155 @@
       main { padding: 0 0.5rem; }
       .post h3 { font-size: 1rem; }
       .post p { font-size: 0.9rem; }
+      .diagram { font-size: 12px; }
     }
   </style>
 </head>
 <body>
 
   <header>
-	<h1>LED<sup>2</sup></h1>
+    <h1>LED<sup>2</sup></h1>
     <p>Learn Every Damn Day</p>
     <nav>
-      <a href="../../index.html">Home</a>
+      <a href="../index.html">Home</a>
       <!--<a href="../about.html">About</a>-->
     </nav>
   </header>
 
   <main>
-    <article>
-      <h2>How I use AI as my companion for my learnings.</h2>
-      <small>Published: Sept 30, 2025 • Tags: AI for learning, LLMs, Gemini, ChatGPT</small>
+    <article class="post">
+      <h2>What is eBPF?</h2>
+      <small>Published: Nov 05, 2025 • Tags: eBPF, XDP, Working</small>
+	  <p style="margin-top:0.75rem;">
+		eBPF (extended Berkeley Packet Filter) is a powerful in-kernel technology that allows safely running user-defined programs inside the Linux kernel without changing its source code. It provides a sandboxed, JIT-compiled environment where small pieces of bytecode can hook into kernel or user-space events, enabling advanced observability, networking, and security features with minimal overhead. XDP (eXpress Data Path) is a high-performance networking framework built on top of eBPF, allowing packet processing to happen at the earliest point in the kernel’s networking stack, directly at the network driver level. This makes XDP ideal for use cases such as DDoS mitigation, load balancing, and fast packet filtering, where microsecond-level performance is crucial.
+      </p>
+	  <br>
+	  <h3>How XDP (eXtended Data Path) works?</h3>
+	  <p style="margin-top:0.75rem;">
+		
+		Ever wondered how XDP works. Below is a simple, clear ASCII diagram showing how an incoming packet travels from the wire, into the NIC's
+        hardware buffer (RX ring), and then into the kernel's software RX queue — followed by a step-by-step explanation.
+      </p>
 
-      <!--<p>Every big achievement starts with a small step. The idea of “small wins” is simple: focus on doing one little thing every day, and over time, those small actions add up to something huge.</p>
+      <!-- ASCII diagram -->
+      <pre class="diagram" aria-label="Packet flow ASCII diagram">
+                  Incoming Packet from Network
+                              │
+                              ▼
+                   ┌────────────────────┐
+                   │ Network Interface  │
+                   │      (NIC)         │
+                   └────────────────────┘
+                              │
+               [1] Packet arrives at NIC hardware
+                              │
+                              ▼
+          ┌───────────────────────────────────────────────┐
+          │            RX RING BUFFER (DMA)               │
+          │ (Allocated by driver, accessed by NIC via DMA)│
+          │-----------------------------------------------│
+          │ [slot 0] → buffer → empty / used              │
+          │ [slot 1] → buffer → empty / used              │
+          │ [slot 2] → buffer → empty / used              │
+          │ ...                                           │
+          └───────────────────────────────────────────────┘
+                              │
+               [2] NIC writes packet into next free slot
+                              │
+               [3] NIC raises interrupt / signals driver
+                              │
+                              ▼
+              ┌───────────────────────────────────┐
+              │      DEVICE DRIVER (Kernel)       │
+              │-----------------------------------│
+              │ Reads descriptors from RX ring    │
+              │ Wraps data into `sk_buff` structs │
+              │ Moves them to RX queue            │
+              └───────────────────────────────────┘
+                              │
+                              ▼
+           ┌────────────────────────────────────────────┐
+           │            RX QUEUE (Software)             │
+           │  (Queue of sk_buffs for kernel stack)      │
+           │--------------------------------------------│
+           │ [packet #1] → ready for IP/TCP processing  │
+           │ [packet #2] → ready for IP/TCP processing  │
+           │ ...                                        │
+           └────────────────────────────────────────────┘
+                              │
+               [4] Kernel network stack consumes packets
+                              │
+                              ▼
+          ┌──────────────────────────────────────────────┐
+          │       Kernel Network Stack (IP/TCP/UDP)      │
+          │            → Sockets → User Space Apps       │
+          └──────────────────────────────────────────────┘
+      </pre>
 
-      <p>Instead of waiting for perfect conditions, start with what you have. Consistency beats intensity in the long run.</p>
+      <!-- Step-by-step explanation -->
+      <div class="explain" style="margin-top:0.9rem;">
+        <h3 style="margin-bottom:0.5rem;">Step-by-step explanation</h3>
+        <ol>
+          <li><strong>Packet arrives at the NIC (Network Interface Card)</strong>
+            <p style="margin-top:0.25rem;">
+              The NIC's hardware receives a packet from the network cable. At this point the CPU has not been involved yet.
+            </p>
+          </li>
 
-      <p>This is what LED<sup>2</sup> is all about — learning something new every damn day.</p>-->
+          <li style="margin-top:0.5rem;"><strong>NIC writes packet into the RX ring (via DMA)</strong>
+            <p style="margin-top:0.25rem;">
+              The device driver allocated memory for an <em>RX ring buffer</em> (a circular set of descriptors + buffers).
+              The NIC uses <strong>DMA (Direct Memory Access)</strong> to write the packet bytes directly into one of these buffers
+              — so the CPU doesn't copy the bytes during this step.
+            </p>
+          </li>
+
+          <li style="margin-top:0.5rem;"><strong>NIC signals the driver (interrupt or polling)</strong>
+            <p style="margin-top:0.25rem;">
+              After filling one or more buffers, the NIC notifies the CPU (commonly via an interrupt, though high-performance setups
+              often use polling or hybrid methods). This tells the driver there are packets ready to be processed.
+            </p>
+          </li>
+
+          <li style="margin-top:0.5rem;"><strong>Device driver inspects RX ring and creates sk_buffs</strong>
+            <p style="margin-top:0.25rem;">
+              The driver checks which descriptors in the hardware RX ring are marked "filled". For each filled slot the driver:
+              <ul style="margin:0.4rem 0 0 1rem;">
+                <li>Reads metadata (length, status flags) from the descriptor.</li>
+                <li>Wraps the packet buffer into a kernel packet structure (usually an <code>sk_buff</code> in Linux).</li>
+                <li>Queues that <code>sk_buff</code> onto the kernel's <strong>software RX queue</strong>.</li>
+              </ul>
+            </p>
+          </li>
+
+          <li style="margin-top:0.5rem;"><strong>Kernel network stack consumes packets from the RX queue</strong>
+            <p style="margin-top:0.25rem;">
+              The RX queue feeds the kernel's networking layers (IP, TCP/UDP, etc.). Those layers perform routing, checksums,
+              demultiplexing to sockets, and finally hand data to user-space applications.
+            </p>
+          </li>
+
+          <li style="margin-top:0.5rem;"><strong>Buffers are recycled</strong>
+            <p style="margin-top:0.25rem;">
+              After the driver or kernel has finished with a packet buffer, that slot is returned (reposted) to the RX ring
+              so the NIC can reuse it for new incoming packets.
+            </p>
+          </li>
+        </ol>
+
+        <div class="note">
+          <strong>Quick summary:</strong>
+          <p style="margin-top:0.25rem;">
+            There are two related but distinct things:
+            <ul style="margin:0.4rem 0 0 1rem;">
+              <li><strong>RX Ring Buffer (hardware DMA region)</strong> — memory region the NIC writes into directly.</li>
+              <li><strong>RX Queue (software queue)</strong> — kernel/driver queue of <code>sk_buff</code>s which the network stack processes.</li>
+            </ul>
+            The NIC writes into the ring (fast, DMA). The driver wraps those buffers and places them into the software RX queue for the kernel to consume.
+          </p>
+        </div>
+      </div>
+
     </article>
   </main>
 
