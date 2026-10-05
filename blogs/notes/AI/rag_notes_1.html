@@ -1,0 +1,1990 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>RAG Crash Course Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; every "Try it" panel is a white sheet.
+   Pipeline colour code is used everywhere: teal = Retrieve, amber = Augment, cobalt = Generate. */
+:root{
+  --paper:#F3F5F9; --surface:#FFFFFF; --sunk:#E9EDF4; --ink:#141A27; --muted:#525C72; --line:#D6DCE7;
+  --accent:#2D47D6; --accent-ink:#FFFFFF; --accent-soft:#E3E8FD;
+  --r:#0B7F74; --r-soft:#DCF1EE; --a:#A86400; --a-soft:#FBEBD2; --g:#2D47D6; --g-soft:#E3E8FD;
+  --ok:#1D7536; --ok-soft:#DFF3E5; --warn:#9A5800; --warn-soft:#FCEBD0; --bad:#B42318; --bad-soft:#FBE3E0;
+  --mark:#FFE27A; --mark-ink:#141A27; --code-bg:#0F1522; --code-ink:#DCE3F2; --code-dim:#8C98B3; --code-kw:#9FB2FF; --code-str:#7FD8C8;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E121A; --surface:#161C28; --sunk:#1E2534; --ink:#E6EAF3; --muted:#9AA4BA; --line:#2B3446;
+    --accent:#8A9EFF; --accent-ink:#0E121A; --accent-soft:#232D52;
+    --r:#3CC2B1; --r-soft:#12342F; --a:#F0A93B; --a-soft:#3A2A10; --g:#8A9EFF; --g-soft:#232D52;
+    --ok:#4CC777; --ok-soft:#143322; --warn:#F0A93B; --warn-soft:#3A2A10; --bad:#FF7A6B; --bad-soft:#3D1A17;
+    --mark:#7A5F10; --mark-ink:#FFF6DA; --code-bg:#0A0E16; --code-ink:#DCE3F2; --code-dim:#7D89A3; --code-kw:#9FB2FF; --code-str:#7FD8C8;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E121A; --surface:#161C28; --sunk:#1E2534; --ink:#E6EAF3; --muted:#9AA4BA; --line:#2B3446;
+  --accent:#8A9EFF; --accent-ink:#0E121A; --accent-soft:#232D52;
+  --r:#3CC2B1; --r-soft:#12342F; --a:#F0A93B; --a-soft:#3A2A10; --g:#8A9EFF; --g-soft:#232D52;
+  --ok:#4CC777; --ok-soft:#143322; --warn:#F0A93B; --warn-soft:#3A2A10; --bad:#FF7A6B; --bad-soft:#3D1A17;
+  --mark:#7A5F10; --mark-ink:#FFF6DA; --code-bg:#0A0E16; --code-ink:#DCE3F2; --code-dim:#7D89A3; --code-kw:#9FB2FF; --code-str:#7FD8C8;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+h1,h2,h3,h4{font-family:var(--font-display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.55rem,3.2vw,2.05rem);font-weight:800;letter-spacing:-.015em}
+h3{font-size:1.2rem;font-weight:700;margin-top:6px}
+h4{font-size:1rem;font-weight:700}
+p{margin:0}
+code{font-family:var(--font-mono);font-size:.86em;background:var(--sunk);padding:.08em .35em;border-radius:4px}
+mark{background:var(--mark);color:var(--mark-ink);padding:0 .15em;border-radius:3px}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);gap:48px;max-width:1220px;margin:0 auto;padding-inline:24px;padding-block:28px 80px}
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;max-height:calc(100vh - 40px);overflow:auto;display:flex;flex-direction:column;gap:14px;padding-right:4px}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:1.05rem}
+.prog{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted)}
+.prog-bar{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.prog-bar i{display:block;height:100%;width:0;background:var(--r);border-radius:99px;transition:width .4s}
+#toc{display:flex;flex-direction:column;gap:1px}
+#toc a{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:.88rem;line-height:1.3}
+#toc a:hover{background:var(--sunk);color:var(--ink)}
+#toc a.active{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font-weight:700}
+#toc .tick{flex:none;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:9px;line-height:1}
+#toc a.done .tick{background:var(--r);border-color:var(--r);color:var(--paper)}
+#toc a.done .tick::after{content:"✓";font-weight:700}
+main{min-width:0;display:flex;flex-direction:column;gap:72px}
+section{display:flex;flex-direction:column;gap:18px;max-width:840px;scroll-margin-top:20px}
+.prose{display:flex;flex-direction:column;gap:14px;max-width:68ch}
+.prose ul,.prose ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.eyebrow b{color:var(--ink);font-weight:600}
+.oneline{font-size:1.12rem;border-left:3px solid var(--accent);padding:4px 0 4px 14px;max-width:66ch}
+.muted{color:var(--muted)}
+.small{font-size:.88rem}
+
+@media (max-width:920px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:28px;padding-inline:16px;padding-block:0 64px}
+  .rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;max-height:none;overflow:visible;background:var(--paper);padding:10px 0 8px;margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line);flex-direction:column;gap:8px}
+  .rail-title{display:none}
+  #toc{flex-direction:row;overflow-x:auto;gap:4px;scrollbar-width:thin;padding-bottom:4px}
+  #toc a{flex:none;white-space:nowrap;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+}
+
+/* ---------- hero ---------- */
+.hero{display:flex;flex-direction:column;gap:18px;padding-top:8px}
+.hero .lede{font-size:1.15rem;max-width:62ch;color:var(--muted)}
+.rag-strip{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin-top:6px}
+.rag-strip .stage{border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rag-strip .stage b{font-family:var(--font-display);font-size:1.6rem;line-height:1}
+.rag-strip .stage span{font-size:.9rem}
+.rag-strip .arrow{display:grid;place-items:center;color:var(--muted);font-size:1.3rem}
+.st-r{background:var(--r-soft);color:var(--ink)} .st-r b{color:var(--r)}
+.st-a{background:var(--a-soft);color:var(--ink)} .st-a b{color:var(--a)}
+.st-g{background:var(--g-soft);color:var(--ink)} .st-g b{color:var(--g)}
+@media (max-width:640px){.rag-strip{grid-template-columns:1fr}.rag-strip .arrow{transform:rotate(90deg);height:18px}}
+
+/* ---------- generic blocks ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tryit{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.panel h3{margin:0}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--surface);min-width:0}
+.card h4{font-size:1rem}
+.callout{border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.callout.remember{background:var(--r-soft)}
+.callout.warn{background:var(--a-soft)}
+.callout.info{background:var(--g-soft)}
+.callout b.lbl{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;max-width:70ch}
+.steps>li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start}
+.steps>li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:var(--font-mono);font-size:.8rem;font-weight:600;margin-top:1px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-family:var(--font-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--sunk)}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:.85rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 12px;font-size:.85rem;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:.92rem}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
+input[type=text],select,textarea{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 11px;min-width:0}
+input[type=text]{flex:1 1 220px}
+textarea{width:100%;font-family:var(--font-mono);font-size:.82rem;line-height:1.5;resize:vertical}
+input[type=range]{accent-color:var(--accent);width:100%}
+.pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:99px;letter-spacing:.02em;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.r{background:var(--r-soft);color:var(--r)}
+.pill.a{background:var(--a-soft);color:var(--a)}
+.pill.g{background:var(--g-soft);color:var(--g)}
+.bar{height:10px;background:var(--sunk);border-radius:99px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .35s}
+.bar.r i{background:var(--r)} .bar.a i{background:var(--a)}
+
+/* code */
+.code{border-radius:10px;overflow:hidden;background:var(--code-bg);color:var(--code-ink);min-width:0}
+.code-head{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;font-family:var(--font-mono);font-size:.72rem;color:var(--code-dim);border-bottom:1px solid rgba(255,255,255,.07)}
+.code-head button{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--code-ink);border-radius:6px;padding:2px 9px;font-size:.72rem;cursor:pointer;font-family:var(--font-mono)}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--font-mono);font-size:.8rem;line-height:1.6}
+.code pre code{background:none;padding:0;font-size:1em;color:inherit}
+.code .c{color:var(--code-dim)} .code .k{color:var(--code-kw)} .code .s{color:var(--code-str)}
+
+/* details */
+details.lab{border:1px dashed var(--line);border-radius:10px;padding:0 16px;background:transparent}
+details.lab>summary{cursor:pointer;padding:12px 0;font-weight:700;list-style:none;display:flex;gap:10px;align-items:center}
+details.lab>summary::before{content:"+";font-family:var(--font-mono);color:var(--accent);width:14px}
+details.lab[open]>summary::before{content:"–"}
+details.lab>div{padding-bottom:16px;display:flex;flex-direction:column;gap:10px}
+.sec-foot{display:flex;justify-content:flex-end}
+.done-btn{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 14px;font-size:.85rem;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.done-btn[aria-pressed="true"]{background:var(--r-soft);border-color:var(--r);color:var(--r);font-weight:700}
+
+/* ---------- widget specifics ---------- */
+.ragdemo{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:14px}
+@media (max-width:760px){.ragdemo{grid-template-columns:minmax(0,1fr)}}
+.ask{font-family:var(--font-display);font-weight:700;font-size:1.05rem;padding:12px 14px;background:var(--sunk);border-radius:10px}
+.answer{border-radius:10px;padding:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;min-width:0}
+.answer.badans{border-color:var(--bad);background:var(--bad-soft)}
+.stepper{display:flex;gap:6px;flex-wrap:wrap}
+.stepper button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:.85rem;cursor:pointer;font-weight:700}
+.stepper button.on-r{background:var(--r);color:var(--paper);border-color:var(--r)}
+.stepper button.on-a{background:var(--a);color:var(--paper);border-color:var(--a)}
+.stepper button.on-g{background:var(--g);color:var(--paper);border-color:var(--g)}
+.promptbox{font-family:var(--font-mono);font-size:.78rem;line-height:1.55;white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto}
+.promptbox .pr{color:var(--a)} .promptbox .pc{color:var(--r)} .promptbox .pq{color:var(--g);font-weight:600}
+
+.scen{display:flex;flex-direction:column;gap:10px}
+.scen-item{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.scen-item .opts{display:flex;gap:6px;flex-wrap:wrap}
+.scen-item .opts button{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:5px 11px;font-size:.84rem;cursor:pointer}
+.scen-item .opts button.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
+.scen-item .opts button.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.scen-item .why{font-size:.88rem;color:var(--muted)}
+
+.kwtable td.hit{background:var(--r-soft);color:var(--r);font-weight:700}
+.kwtable tr.top td:first-child{font-weight:700}
+.kwtable .scorecell{display:grid;grid-template-columns:minmax(60px,1fr) 52px;gap:8px;align-items:center}
+.verdict{padding:12px 14px;border-radius:10px;font-size:.95rem}
+.verdict.ok{background:var(--ok-soft)} .verdict.bad{background:var(--bad-soft)} .verdict.warn{background:var(--warn-soft)}
+
+.sem{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.sem{grid-template-columns:minmax(0,1fr)}}
+.plot svg{width:100%;height:auto;display:block;max-width:420px}
+.rank{display:flex;flex-direction:column;gap:6px}
+.rank-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(50px,1fr) 46px;gap:8px;align-items:center;font-size:.86rem}
+.rank-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-row.top .nm{font-weight:700}
+.rank-row .v{font-family:var(--font-mono);font-size:.78rem;text-align:right;font-variant-numeric:tabular-nums}
+.qvec{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;align-items:end;height:70px;padding-top:6px}
+.qvec div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%;min-width:0}
+.qvec i{display:block;width:70%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
+.qvec span{font-size:.62rem;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+.dot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
+@media (max-width:760px){.dot{grid-template-columns:minmax(0,1fr)}}
+.dot svg{width:100%;max-width:360px;height:auto;touch-action:none;display:block}
+.dot .handle{cursor:grab}
+.calc{font-family:var(--font-mono);font-size:.84rem;display:flex;flex-direction:column;gap:6px}
+.calc .ln{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.calc .ln b{color:var(--muted);font-weight:400}
+.big{font-family:var(--font-display);font-size:2rem;font-weight:800}
+
+.hbars{display:flex;flex-direction:column;gap:10px}
+.hbar{display:grid;grid-template-columns:140px minmax(0,1fr);gap:10px;align-items:center;font-size:.88rem}
+.hbar .track{position:relative;height:26px;background:var(--sunk);border-radius:6px}
+.hbar .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:6px}
+.hbar .fill.r{background:var(--r)}
+.hbar .lbl{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:.75rem;color:var(--ink);white-space:nowrap}
+.axis{display:grid;grid-template-columns:140px minmax(0,1fr);gap:10px;font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+.axis .ticks{position:relative;height:16px}
+.axis .ticks span{position:absolute;transform:translateX(-50%)}
+@media (max-width:520px){.hbar,.axis{grid-template-columns:96px minmax(0,1fr)}}
+
+.vdb svg{width:100%;height:auto;display:block}
+.vdb .pt{fill:var(--line);transition:fill .15s}
+.vdb .pt.probe{fill:var(--a)}
+.vdb .pt.checked{fill:var(--muted)}
+.vdb .pt.hit{fill:var(--r)}
+.vdb .cen{fill:none;stroke:var(--muted);stroke-width:1.5}
+.vdb .cen.probe{stroke:var(--a);stroke-width:3}
+.vdb .cen.win{stroke:var(--r);stroke-width:3}
+.counter{font-family:var(--font-mono);font-size:.9rem}
+.counter b{font-size:1.4rem;font-family:var(--font-display)}
+
+.chunk-ctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.chunk-ctl{grid-template-columns:minmax(0,1fr)}}
+.chunks{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.chunk{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--paper);min-width:0}
+.chunk.best{border-color:var(--r);box-shadow:0 0 0 2px var(--r-soft);background:var(--surface)}
+.chunk .meta{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+.chunk p{font-family:var(--font-mono);font-size:.76rem;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.chunk .ov{background:var(--a-soft);color:var(--a);border-radius:3px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw{width:14px;height:10px;border-radius:3px;display:inline-block}
+
+.pipe{display:flex;flex-direction:column;gap:10px}
+.pipe-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pnode{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem;background:var(--paper);transition:background .25s,border-color .25s}
+.pnode.on{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.pnode.on.r{border-color:var(--r);background:var(--r-soft)}
+.pnode.on.a{border-color:var(--a);background:var(--a-soft)}
+.pnode.on.g{border-color:var(--g);background:var(--g-soft)}
+.parr{color:var(--muted)}
+.pout{display:flex;flex-direction:column;gap:10px}
+.pstage{border-left:3px solid var(--line);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:6px}
+.pstage.r{border-color:var(--r)} .pstage.a{border-color:var(--a)} .pstage.g{border-color:var(--g)}
+.pstage h4{font-size:.95rem}
+.final{font-size:1.02rem;background:var(--g-soft);border-radius:10px;padding:14px}
+
+.cache-res{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;background:var(--sunk)}
+.lat{display:flex;height:16px;border-radius:5px;overflow:hidden;background:var(--paper)}
+.lat i{display:block;height:100%}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:var(--font-display);font-size:1.45rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--muted)}
+
+.mon{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:700px){.mon{grid-template-columns:minmax(0,1fr)}}
+.mrow{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.mrow:last-child{border-bottom:none}
+
+.toggles{display:flex;flex-direction:column;gap:6px}
+.tog{display:flex;align-items:center;gap:10px;font-size:.92rem;cursor:pointer}
+.tog input{width:18px;height:18px;accent-color:var(--r)}
+.tiers{display:flex;flex-direction:column;gap:6px;counter-reset:t}
+.tier{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.88rem;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;opacity:.55}
+.tier.live{opacity:1;border-color:var(--r);background:var(--r-soft)}
+.tier.down{opacity:.5;text-decoration:line-through;text-decoration-color:var(--bad)}
+.cb{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cbs{border:2px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:700;font-size:.88rem}
+.cbs.on.closed{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+.cbs.on.open{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.cbs.on.half{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+.log{font-family:var(--font-mono);font-size:.76rem;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:96px;display:flex;flex-direction:column;gap:3px}
+
+.arch{display:flex;flex-direction:column;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:14px;position:relative}
+.arch-k{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.layer{border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.layer.app{background:var(--g-soft)} .layer.pipe2{background:var(--a-soft)} .layer.data{background:var(--r-soft)} .layer.mon2{background:var(--sunk)}
+.layer h4{font-size:.85rem;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
+.comps{display:flex;flex-wrap:wrap;gap:6px}
+.comp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 10px;font-size:.84rem;cursor:pointer}
+.comp.sel{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.archinfo{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface);min-height:70px}
+
+.qa-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+details.qa{border-bottom:1px solid var(--line)}
+details.qa>summary{cursor:pointer;list-style:none;padding:12px 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;font-weight:700;align-items:baseline}
+details.qa>summary::-webkit-details-marker,details.lab>summary::-webkit-details-marker{display:none}
+details.qa>summary .qn{font-family:var(--font-mono);font-size:.75rem;color:var(--muted);font-weight:400}
+details.qa>div{padding:0 0 14px 34px;display:flex;flex-direction:column;gap:8px;max-width:72ch}
+details.qa>div ul{margin:0;padding-left:1.2em}
+.qtag{font-family:var(--font-mono);font-size:.68rem;color:var(--accent);margin-left:6px;font-weight:400}
+
+.quiz{display:flex;flex-direction:column;gap:14px}
+.qq{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.qq .opts{display:flex;flex-direction:column;gap:6px}
+.qq .opts button{text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:.92rem}
+.qq .opts button.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
+.qq .opts button.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.qq .exp{font-size:.9rem;color:var(--muted)}
+.score{position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:5;align-self:flex-start;background:var(--ink);color:var(--paper);border-radius:99px;padding:6px 14px;font-family:var(--font-mono);font-size:.82rem}
+@media (max-width:920px){.score{top:calc(env(safe-area-inset-top,0px) + 96px)}}
+
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.gloss .card b{font-family:var(--font-display)}
+.cheat{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.cheat .card{gap:4px}
+.cheat .card .k{font-family:var(--font-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.cheat .card .v{font-family:var(--font-display);font-weight:700;font-size:1.05rem}
+.fixlist{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 16px;font-size:.88rem}
+.fixlist s{color:var(--muted)}
+footer{color:var(--muted);font-size:.85rem;max-width:68ch}
+</style>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-title">RAG Crash Course</div>
+    <div class="prog">
+      <span id="progText">0 of 0 sections understood</span>
+      <div class="prog-bar"><i id="progBar"></i></div>
+    </div>
+    <nav id="toc"></nav>
+  </aside>
+
+  <main>
+  <!-- ================= OVERVIEW ================= -->
+  <section id="start" data-nav="Start here" class="hero">
+    <div class="eyebrow"><b>Study notes</b> · from “RAG Crash Course for Beginners” (KodeKloud, ~58 min)</div>
+    <h1>Retrieval-Augmented Generation, from zero</h1>
+    <p class="lede">Every idea in the video, rebuilt as notes you can poke at. Each part explains one concept step by step, then gives you a live demo, the code from the video, the lab answers, and interview questions at the end.</p>
+    <div class="rag-strip" aria-label="The three steps of RAG">
+      <div class="stage st-r"><b>R</b><strong>Retrieve</strong><span>Find the relevant passages in your own documents.</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="stage st-a"><b>A</b><strong>Augment</strong><span>Paste those passages into the prompt next to the question.</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="stage st-g"><b>G</b><strong>Generate</strong><span>The LLM writes an answer using that context.</span></div>
+    </div>
+    <div class="prose">
+      <h3>How to use these notes</h3>
+      <ul>
+        <li>Read the parts in order. Each one builds on the one before, exactly like the video.</li>
+        <li>Every <span class="pill g">Try it</span> panel is live. Type your own questions and drag things around.</li>
+        <li>Press <b>Mark as understood</b> at the end of a part. Your progress shows in the contents bar and is remembered in this browser.</li>
+        <li>The running example is the video's <b>Policy Copilot</b>: an internal chatbot for a company called TechCorp that answers employees' questions about company policies.</li>
+      </ul>
+    </div>
+    <details class="lab">
+      <summary>Auto-caption errors in the transcript, corrected here</summary>
+      <div>
+        <p class="small muted">The YouTube transcript was auto-generated, so some words came out wrong. These notes use the correct terms.</p>
+        <div class="fixlist">
+          <s>“Chad WT / Chad GBT”</s><span>ChatGPT</span>
+          <s>“rack”</s><span>RAG</span>
+          <s>“TF” / “TF ID of”</s><span>TF-IDF</span>
+          <s>“GP command”</s><span>grep command</span>
+          <s>“VV8”</s><span>Weaviate</span>
+          <s>“Chromb / Chromob”</s><span>ChromaDB</span>
+          <s>“Reddis / Red is”</s><span>Redis</span>
+          <s>“Jerger”</s><span>Jaeger</span>
+          <s>“cache response … 5 seconds”</s><span>5 milliseconds (950 ms ÷ 5 ms = 190× faster)</span>
+          <s>“(1,5)·(6,1) … we get 30”</s><span>1×6 + 5×1 = 11</span>
+          <s>“we just looked at vector search”</s><span>keyword search (the part before semantic search)</span>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 1 ================= -->
+  <section id="rag" data-nav="1 · RAG in plain words">
+    <div class="eyebrow"><b>Part 1</b> · The simplest explanation</div>
+    <h2>What RAG is, in plain words</h2>
+    <p class="oneline">RAG means: before the AI answers, look up the relevant facts in <em>your own</em> documents and hand them to the AI together with the question.</p>
+    <div class="prose">
+      <h3>The problem</h3>
+      <p>You ask ChatGPT: <em>“What's the reimbursement policy for home office setup?”</em> ChatGPT has never seen your company's private policy document. So it does what LLMs do when they lack information: it <b>hallucinates</b>. It gives a confident, generic answer that sounds right for “most companies” but may be wrong for yours.</p>
+      <p>The real issue is missing <b>context</b>. The model is smart, but it does not have the facts.</p>
+      <h3>The manual fix you have probably already done</h3>
+      <ol class="steps">
+        <li><div>Open your company's policy document and find the section about home office setup.</div></li>
+        <li><div>Copy that section and paste it into ChatGPT along with your question: “Refer to this policy.”</div></li>
+        <li><div>ChatGPT now answers correctly, because the facts are right there in the prompt.</div></li>
+      </ol>
+      <p>Those three steps <em>are</em> RAG. Each one has a name:</p>
+    </div>
+    <div class="grid3">
+      <div class="card"><span class="pill r">Retrieval</span><p>Looking up your documents and pulling out the relevant section.</p></div>
+      <div class="card"><span class="pill a">Augmentation</span><p>Improving (“augmenting”) the prompt by adding the retrieved text to it.</p></div>
+      <div class="card"><span class="pill g">Generation</span><p>The LLM generates a response based on the augmented prompt.</p></div>
+    </div>
+    <div class="prose">
+      <h3>What a “RAG system” actually means</h3>
+      <p>You don't want every employee to dig through documents themselves. A RAG system <b>automates</b> the three steps. The user only types the question. The system finds the right policy text, builds the improved prompt, and asks the LLM. The rest of the course is about <em>how</em> each step is automated.</p>
+    </div>
+
+    <div class="panel" id="w-rag">
+      <div class="panel-head"><h3>Plain LLM versus RAG, side by side</h3><span class="tryit">Try it</span></div>
+      <div class="ask">“What's the reimbursement policy for home office setup?”</div>
+      <div class="ragdemo">
+        <div class="answer badans">
+          <span class="pill bad">Plain LLM · no access to your files</span>
+          <p>“Most companies offer a one-time stipend of around $100–$300, or a monthly allowance of $50. Check with your manager for details.”</p>
+          <p class="small"><b>Problem:</b> this is a generic guess. TechCorp's real limit is $500, and the model never saw it.</p>
+        </div>
+        <div class="answer">
+          <div class="row" style="justify-content:space-between"><span class="pill ok">RAG system</span><div class="stepper" id="ragSteps"></div></div>
+          <div id="ragOut"></div>
+          <div class="row"><button class="btn" id="ragNext">Run step 1: Retrieve</button><button class="btn ghost" id="ragReset">Reset</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout remember"><b class="lbl">Remember</b><p>LLM = Large Language Model (GPT, Claude, Gemini). Hallucination = a confident but made-up answer. Context = the extra information you put in the prompt so the model can answer correctly.</p></div>
+  </section>
+
+  <!-- ================= PART 2 ================= -->
+  <section id="choose" data-nav="2 · Prompting, fine-tuning or RAG?">
+    <div class="eyebrow"><b>Part 2</b> · When to use RAG, and when not to</div>
+    <h2>Prompt engineering, fine-tuning or RAG?</h2>
+    <p class="oneline">RAG is not the answer to everything. Prompting sets the rules, fine-tuning sets the style, RAG supplies the facts.</p>
+    <div class="prose">
+      <p>A common beginner mistake is treating RAG as the fix for every AI problem. There are three main ways to get better answers from an AI, and each solves a different problem. The video uses the Policy Copilot to show all three.</p>
+      <h3>What the Policy Copilot needs</h3>
+      <ol class="steps">
+        <li><div><b>Restrictions and security.</b> Don't answer some topics (performance-review appeals, salary discussions). Send those people to HR. Never reveal personal employee information. <br><span class="pill a">Solution: prompt engineering</span><br>These are strict written instructions given to the LLM, a “rule book” that keeps the bot safe and professional.</div></li>
+        <li><div><b>A specific voice.</b> Sound like the CEO, who is Scottish and speaks with warm, blunt candour. Just saying “reply in a Scottish accent” isn't enough; it must use <em>his</em> words and tone. <br><span class="pill g">Solution: fine-tuning</span><br>Collect his speeches, emails, blog posts and videos, and further train a model on hundreds of example questions and answers in his style.</div></li>
+        <li><div><b>Accurate, current policy answers.</b> <br><span class="pill r">Solution: RAG</span><br>Retrieve the latest policy text at the moment the question is asked.</div></li>
+      </ol>
+      <h3>Why not just fine-tune the model on all the policies?</h3>
+      <ul>
+        <li><b>Policies change.</b> Every change means retraining the model again.</li>
+        <li><b>Training is slow and expensive.</b> It takes time and lots of computing power.</li>
+        <li><b>No citations.</b> Users can't see which document an answer came from, so they can't verify it.</li>
+        <li><b>Accuracy drops.</b> The video notes that the more facts you push into training data, the less reliably the model recalls any one of them.</li>
+        <li><b>Knowledge cutoff.</b> A trained model only knows what was in its training data, frozen at that date.</li>
+      </ul>
+      <p>RAG avoids all five because it fetches information <b>at query time</b>, not at training time. Update a document and the very next answer uses it.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Method</th><th>What it changes</th><th>Best for</th><th>Bad for</th><th>Cost to update</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill a">Prompt engineering</span></td><td>The instructions sent with each request</td><td>Rules, refusals, output format, tone hints</td><td>Large amounts of private facts</td><td>Edit text. Instant.</td></tr>
+          <tr><td><span class="pill g">Fine-tuning</span></td><td>The model's weights (it is retrained)</td><td>Stable patterns: writing style, voice, format habits</td><td>Facts that change; citations</td><td>Retrain. Slow and costly.</td></tr>
+          <tr><td><span class="pill r">RAG</span></td><td>The context the model sees per question</td><td>Private, changing, verifiable facts</td><td>Teaching a style or behaviour</td><td>Re-index the changed document. Minutes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Which tool fits?</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">Pick the best technique for each requirement. You get the reason straight away.</p>
+      <div class="scen" id="scen"></div>
+      <p class="small" id="scenScore"></p>
+    </div>
+    <div class="callout info"><b class="lbl">Key takeaway</b><p>Fine-tuning is great for stable patterns (how to say it) and terrible for dynamic facts (what to say). Real products combine all three: the Policy Copilot uses a fine-tuned voice, a rule-book system prompt, and RAG for the facts.</p></div>
+  </section>
+
+  <!-- ================= PART 3 ================= -->
+  <section id="keyword" data-nav="3 · Keyword search">
+    <div class="eyebrow"><b>Part 3</b> · Retrieval, method 1</div>
+    <h2>Keyword search: TF-IDF and BM25</h2>
+    <p class="oneline">Keyword search finds documents that contain the <em>exact words</em> of the question, and ranks them by how often and how uniquely those words appear.</p>
+    <div class="prose">
+      <h3>Step by step</h3>
+      <ol class="steps">
+        <li><div><b>Pick keywords from the question.</b> From “What's the reimbursement policy for home office setup?” we keep <code>reimbursement</code> and <code>home office</code>. Filler words like “what”, “the”, “for” (called <b>stop words</b>) are ignored.</div></li>
+        <li><div><b>Search the documents for those words.</b> The simplest way is the Linux <code>grep</code> command, or an SQL <code>LIKE</code> query if the text is in a database.</div></li>
+        <li><div><b>Rank the matches.</b> Count how often each keyword appears in each document. The document with the most (and most meaningful) matches wins.</div></li>
+      </ol>
+    </div>
+    <div class="grid2">
+      <div class="code"><div class="code-head"><span>bash · grep</span><button class="copy">Copy</button></div><pre><code><span class="c"># -r: search all files in the folder, -i: ignore case, -l: list file names</span>
+grep -ril "reimbursement" techcorp-docs/
+grep -ril "home office" techcorp-docs/</code></pre></div>
+      <div class="code"><div class="code-head"><span>sql</span><button class="copy">Copy</button></div><pre><code><span class="k">SELECT</span> * <span class="k">FROM</span> policies
+<span class="k">WHERE</span> content <span class="k">LIKE</span> <span class="s">'%reimbursement%'</span>
+   <span class="k">OR</span> content <span class="k">LIKE</span> <span class="s">'%home office%'</span>;</code></pre></div>
+    </div>
+    <div class="prose">
+      <p>Both only return text that matches the words <em>exactly</em>. That is why the chance of getting the right answer every time is low. Real search engines use smarter scoring. The two most popular are TF-IDF and BM25.</p>
+      <h3>TF-IDF (Term Frequency × Inverse Document Frequency)</h3>
+      <ul>
+        <li><b>TF, term frequency:</b> how many times the word appears in this document. More mentions suggests the document is about that word.</li>
+        <li><b>IDF, inverse document frequency:</b> how <em>rare</em> the word is across all documents. A word in every document (like “office” or “policy”) tells you nothing, so it gets a low weight. A word in only one document (like “furniture”) is a strong signal, so it gets a high weight.</li>
+        <li><b>Score</b> = TF × IDF for every word, then the query and each document are compared (with cosine similarity, explained in Part 5).</li>
+      </ul>
+      <p class="small muted">Formula used by scikit-learn: idf(w) = ln((1 + N) / (1 + df(w))) + 1, where N is the number of documents and df(w) is how many documents contain w.</p>
+      <h3>BM25 (Best Match 25)</h3>
+      <p>BM25 is an improved TF-IDF and is the default in search engines like Elasticsearch. It adds two fixes:</p>
+      <ul>
+        <li><b>Saturation (parameter k1 ≈ 1.2–2).</b> The 10th mention of a word adds much less than the 1st. A document can't win by spamming a word.</li>
+        <li><b>Length normalisation (parameter b ≈ 0.75).</b> A long document naturally contains more words, so its counts are scaled down. Short focused documents aren't punished.</li>
+      </ul>
+      <p>In the video, BM25 gives “office” a score of zero because it appears in all three test sentences, so BM25 treats it as useless. TF-IDF still gives it 0.4. That is the “BM25 is more strict” point.</p>
+    </div>
+
+    <div class="panel" id="w-kw">
+      <div class="panel-head"><h3>A real keyword search engine over 8 TechCorp policies</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">This runs actual TF-IDF and BM25 maths in your browser. The table shows how many times each query word appears in each document, then both scores. Try the synonym queries to watch keyword search fail.</p>
+      <div class="row"><input type="text" id="kwQ" aria-label="Keyword search query" value="home office reimbursement"><button class="btn" id="kwGo">Search</button></div>
+      <div class="chips" id="kwChips"></div>
+      <div class="tablewrap"><table class="kwtable" id="kwTable"></table></div>
+      <div id="kwVerdict"></div>
+    </div>
+
+    <h3>The code from the video</h3>
+    <div class="code"><div class="code-head"><span>python · TF-IDF with scikit-learn</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install scikit-learn</span>
+<span class="k">from</span> sklearn.feature_extraction.text <span class="k">import</span> TfidfVectorizer
+<span class="k">from</span> sklearn.metrics.pairwise <span class="k">import</span> cosine_similarity
+
+docs = [
+    <span class="s">"Office equipment policy for remote staff"</span>,
+    <span class="s">"Office furniture guidelines"</span>,
+    <span class="s">"Office travel policy"</span>,
+]
+
+analyzer = TfidfVectorizer()                <span class="c"># the "TF-IDF analyzer"</span>
+doc_vectors = analyzer.fit_transform(docs)  <span class="c"># learn vocabulary + score every word</span>
+print(analyzer.get_feature_names_out())     <span class="c"># the words it found</span>
+print(doc_vectors.toarray())                <span class="c"># 2-D array: one row per doc, one column per word</span>
+
+query_vector = analyzer.transform([<span class="s">"furniture"</span>])
+scores = cosine_similarity(query_vector, doc_vectors)[0]
+print(scores)   <span class="c"># highest score -> document 2 (furniture guidelines)</span></code></pre></div>
+    <div class="code"><div class="code-head"><span>python · BM25 with rank_bm25</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install rank_bm25</span>
+<span class="k">from</span> rank_bm25 <span class="k">import</span> BM25Okapi
+
+tokenized_docs = [d.lower().split() <span class="k">for</span> d <span class="k">in</span> docs]   <span class="c"># BM25 needs lists of words</span>
+bm25 = BM25Okapi(tokenized_docs)                       <span class="c"># build the BM25 index</span>
+
+scores = bm25.get_scores(<span class="s">"furniture"</span>.split())
+print(scores)   <span class="c"># document 2 wins again; "office" alone would score ~0</span></code></pre></div>
+    <details class="lab">
+      <summary>Lab 1 notes: keyword search</summary>
+      <div>
+        <ol class="steps">
+          <li><div><b>Explore the documents.</b> Open the <code>techcorp-docs</code> folder. Question: how many documents are in the employee handbook? <b>Answer: 3.</b></div></li>
+          <li><div><b>Basic grep.</b> Search the folder for “holiday” and save the results: <code>grep -ri "holiday" techcorp-docs/ &gt; extracted_content.txt</code></div></li>
+          <li><div><b>Set up Python.</b> Create a virtual environment and install dependencies (exact commands in the <a href="#labs">Labs recap</a>).</div></li>
+          <li><div><b>Run the TF-IDF script.</b> It vectorises the docs, compares with cosine similarity and prints scores. For the query about pet policy, the top result is <code>pet_policy.md</code> with score <b>0.4676</b>; every other file scores below 0.1.</div></li>
+          <li><div><b>Run the BM25 script.</b> It builds an index, calls <code>bm25.get_scores()</code> for each query and prints the top 3.</div></li>
+          <li><div><b>Hybrid search (explore yourself).</b> Combine TF-IDF and BM25 scores with weights, e.g. <code>0.5 × tfidf + 0.5 × bm25</code> (after scaling both to 0–1).</div></li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 4 ================= -->
+  <section id="semantic" data-nav="4 · Semantic search">
+    <div class="eyebrow"><b>Part 4</b> · Retrieval, method 2</div>
+    <h2>Semantic search and embeddings</h2>
+    <p class="oneline">Semantic search finds text by <em>meaning</em>, so “allowance” can find a document that only says “reimbursement”.</p>
+    <div class="prose">
+      <h3>Why keyword search is not enough</h3>
+      <p>If the exact word isn't in the document, keyword search fails. Users don't know which words the policy writer used:</p>
+      <ul>
+        <li>User says <b>allowance</b>, document says <b>reimbursement</b>.</li>
+        <li>User says <b>work from home</b>, document says <b>home office</b>.</li>
+        <li>User says <b>desk</b>, document says <b>furniture</b>.</li>
+      </ul>
+      <p>This is called the <b>vocabulary mismatch</b> problem. Semantic search fixes it.</p>
+      <h3>How semantic search works, step by step</h3>
+      <ol class="steps">
+        <li><div><b>Turn text into numbers.</b> An <b>embedding model</b> converts each piece of text into a list of numbers called a <b>vector</b> (or an <b>embedding</b>).</div></li>
+        <li><div><b>Numbers capture meaning.</b> Think of each number as a score for one aspect of meaning. The video's example: maybe the first number says how animal-related the text is, the second how workplace-related it is, and so on.</div></li>
+        <li><div><b>Similar meaning ends up close together.</b> Treat each vector as coordinates of a point in space. “Dogs” and “pets” land near each other in the animal area. “Remote” lands somewhere else.</div></li>
+        <li><div><b>Search = find the nearest points.</b> Embed the question the same way, then return the documents whose points are closest to it.</div></li>
+      </ol>
+      <div class="callout warn"><b class="lbl">Honest detail</b><p>In real models the numbers are learned automatically and are not human-readable. Nobody decides “number 1 means animals”. The idea that each number is one aspect of meaning is a helpful mental picture, not literally true.</p></div>
+    </div>
+
+    <div class="panel" id="w-sem">
+      <div class="panel-head"><h3>Meaning map: a toy embedding model with 8 dimensions</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">Each document has 8 hand-set meaning scores (animals, money, remote, office, leave, reviews, travel, internet). Your question is embedded with a tiny built-in vocabulary that knows synonyms, the way a trained model learns them from data. Pick any two dimensions as the axes to see a slice of the space. Ranking uses all 8.</p>
+      <div class="row"><input type="text" id="semQ" aria-label="Semantic search query" value="WFH allowance"><button class="btn" id="semGo">Embed &amp; search</button></div>
+      <div class="chips" id="semChips"></div>
+      <div class="sem">
+        <div class="plot">
+          <div class="row small" style="margin-bottom:6px">
+            <label class="field" style="flex-direction:row;align-items:center;gap:6px" for="axX">X axis <select id="axX"></select></label>
+            <label class="field" style="flex-direction:row;align-items:center;gap:6px" for="axY">Y axis <select id="axY"></select></label>
+          </div>
+          <svg id="semSvg" viewBox="0 0 360 340" role="img" aria-label="Scatter plot of documents and query in a 2-D slice of meaning space"></svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div><h4>Your question as a vector</h4><div class="qvec" id="qvec"></div></div>
+          <div><h4>Semantic ranking (cosine similarity)</h4><div class="rank" id="semRank"></div></div>
+          <div class="verdict" id="semVsKw"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PART 5 ================= -->
+  <section id="similarity" data-nav="5 · Measuring similarity">
+    <div class="eyebrow"><b>Part 5</b> · The maths, made simple</div>
+    <h2>Dot product and cosine similarity</h2>
+    <p class="oneline">To compare two vectors we multiply them number by number, add up the results, and scale by their lengths. The closer to 1, the more similar the meaning.</p>
+    <div class="prose">
+      <p>In 2 dimensions you can see which points are close. The model we use has <b>384 dimensions</b>, which nobody can picture. So we need a formula that works in any number of dimensions. That formula is the <b>dot product</b>, a “mathematical ruler” for high-dimensional space.</p>
+      <h3>Step by step, with the video's numbers</h3>
+      <p>Pretend each sentence has a 2-number vector:</p>
+      <ul>
+        <li>A: “Dogs are allowed in the office” = (1, 5)</li>
+        <li>B: the pets sentence = (2, 4)</li>
+        <li>C: the remote-work sentence = (6, 1)</li>
+      </ul>
+      <ol class="steps">
+        <li><div><b>Multiply matching positions.</b> A·B: 1×2 = 2 and 5×4 = 20.</div></li>
+        <li><div><b>Add them.</b> 2 + 20 = <b>22</b>. That is the dot product. Likewise A·C = 1×6 + 5×1 = 11, and B·C = 2×6 + 4×1 = 16.</div></li>
+        <li><div><b>Normalise.</b> Divide by the lengths of both vectors (length = √(x² + y²)). This removes the effect of size so only <em>direction</em> matters. The result is the <b>cosine similarity</b>.</div></li>
+        <li><div><b>Read the score.</b> A·B = 22 ÷ (5.10 × 4.47) = <b>0.965</b> (very similar). A·C = 0.355 and B·C = 0.588. So A and B are the closest pair, exactly as the video concludes.</div></li>
+      </ol>
+      <div class="callout warn"><b class="lbl">Precise version</b><p>Cosine similarity ranges from −1 (opposite) through 0 (unrelated) to 1 (same direction). The video says “between 0 and 1” because typical text embeddings rarely go negative. A raw dot product equals cosine similarity only when both vectors have length 1. all-MiniLM-L6-v2 outputs length-1 vectors, which is why the video can use <code>np.dot</code> directly.</p></div>
+    </div>
+    <div class="panel" id="w-dot">
+      <div class="panel-head"><h3>Dot product calculator</h3><span class="tryit">Try it · drag the arrow tips</span></div>
+      <div class="chips" id="dotChips"></div>
+      <div class="dot">
+        <svg id="dotSvg" viewBox="0 0 320 320" role="img" aria-label="Two vectors drawn from the origin; drag their tips"></svg>
+        <div class="calc" id="dotCalc"></div>
+      </div>
+    </div>
+    <div class="prose">
+      <h3>What the video's real model returned</h3>
+      <p>Running all-MiniLM-L6-v2 on three sentences about dogs, pets and remote work gave:</p>
+    </div>
+    <div class="hbars">
+      <div class="hbar"><span>Dogs vs Pets</span><div class="track"><div class="fill r" style="width:73.3%"></div><span class="lbl">73.3%</span></div></div>
+      <div class="hbar"><span>Dogs vs Remote</span><div class="track"><div class="fill" style="width:36.2%"></div><span class="lbl">36.2%</span></div></div>
+      <div class="hbar"><span>Pets vs Remote</span><div class="track"><div class="fill" style="width:33.8%"></div><span class="lbl">33.8%</span></div></div>
+    </div>
+    <p class="small muted" style="max-width:68ch">“Dogs” and “pets” are different words, yet the model scores them as close because both are about animals at work. Remote work is a different topic, so its scores are low. This is the foundation of RAG retrieval.</p>
+    <div class="code"><div class="code-head"><span>python · sentence similarity</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install sentence-transformers numpy</span>
+<span class="k">from</span> sentence_transformers <span class="k">import</span> SentenceTransformer
+<span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="c"># downloads the model (~90 MB) once, loads 22M parameters into memory</span>
+model = SentenceTransformer(<span class="s">"all-MiniLM-L6-v2"</span>)
+
+sentences = [
+    <span class="s">"Dogs are allowed in the office on Fridays"</span>,
+    <span class="s">"Pets are welcome at work"</span>,
+    <span class="s">"Employees can work remotely"</span>,
+]
+emb = model.encode(sentences)   <span class="c"># shape (3, 384); vectors already have length 1</span>
+
+print(<span class="s">"dogs vs pets  :"</span>, np.dot(emb[0], emb[1]))
+print(<span class="s">"dogs vs remote:"</span>, np.dot(emb[0], emb[2]))
+print(<span class="s">"pets vs remote:"</span>, np.dot(emb[1], emb[2]))</code></pre></div>
+  </section>
+
+  <!-- ================= PART 6 ================= -->
+  <section id="models" data-nav="6 · Embedding models">
+    <div class="eyebrow"><b>Part 6</b> · The tool that makes vectors</div>
+    <h2>Embedding models</h2>
+    <p class="oneline">An embedding model reads text and outputs a fixed-length list of numbers that represents its meaning. It does not write text.</p>
+    <div class="prose">
+      <h3>Finding one</h3>
+      <ol class="steps">
+        <li><div>Machine-learning models are grouped by use case: computer vision, <b>natural language processing (NLP)</b>, audio, and more.</div></li>
+        <li><div><b>Hugging Face</b> is the popular website where you find models, datasets and demo apps.</div></li>
+        <li><div>Inside NLP, the task we need is <b>Sentence Similarity</b>. A popular model there is <b>sentence-transformers/all-MiniLM-L6-v2</b>.</div></li>
+      </ol>
+    </div>
+    <div class="grid3">
+      <div class="card"><span class="muted small">Output size</span><b class="big">384</b><p class="small">numbers per sentence (a 384-dimensional dense vector)</p></div>
+      <div class="card"><span class="muted small">Parameters</span><b class="big">22 M</b><p class="small">learned values that store its “knowledge” of language</p></div>
+      <div class="card"><span class="muted small">Download size</span><b class="big">~90 MB</b><p class="small">small enough to run on a normal laptop, even without a GPU</p></div>
+    </div>
+    <div class="prose">
+      <h3>What is a parameter?</h3>
+      <p>A parameter is one number the model learned during training. Together, the parameters encode how words relate, what sentences mean and which concepts are similar. More parameters means more “brain power”, but also a bigger, slower, costlier model.</p>
+      <h3>Size comparison (log scale)</h3>
+    </div>
+    <div class="panel">
+      <div class="hbars">
+        <div class="hbar"><span>all-MiniLM-L6-v2</span><div class="track"><div class="fill r" style="width:19.1%"></div><span class="lbl" style="left:calc(19.1% + 8px)">22 million · 90 MB</span></div></div>
+        <div class="hbar"><span>GPT-3.5</span><div class="track"><div class="fill" style="width:74.8%"></div><span class="lbl">175 billion · ~350 GB</span></div></div>
+        <div class="hbar"><span>GPT-4</span><div class="track"><div class="fill" style="width:89.4%"></div><span class="lbl">~1.8 trillion* · ~3.6 TB</span></div></div>
+      </div>
+      <div class="axis"><span></span><div class="ticks"><span style="left:0%">1 M</span><span style="left:42.86%">1 B</span><span style="left:85.71%">1 T</span></div></div>
+      <p class="small muted">Bar length is log₁₀ of the parameter count, from 1 million to 10 trillion. *GPT-4's size was never officially published; 1.8 trillion is the widely reported estimate the video uses. Sizes on disk are the video's figures.</p>
+    </div>
+    <div class="prose">
+      <p><b>Why such a small model is enough:</b> an embedding model only has to map meaning to numbers. GPT models have to reason and write fluent text, which needs far more capacity. In a RAG system you typically use a small embedding model for retrieval and a large LLM for generation.</p>
+      <h3>Local versus API embedding models</h3>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th></th><th>Local (sentence-transformers)</th><th>Remote / API (e.g. OpenAI)</th></tr></thead>
+      <tbody>
+        <tr><td><b>Runs on</b></td><td>Your own machine</td><td>The provider's servers</td></tr>
+        <tr><td><b>Cost</b></td><td>Free</td><td>Pay per use (per token)</td></tr>
+        <tr><td><b>Internet</b></td><td>Not needed after download</td><td>Required</td></tr>
+        <tr><td><b>Privacy</b></td><td>Text never leaves your computer</td><td>Text is sent to the provider</td></tr>
+        <tr><td><b>Example</b></td><td>all-MiniLM-L6-v2 (384 dims)</td><td>text-embedding-3-small (1536 dims)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="code"><div class="code-head"><span>python · OpenAI embeddings API</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install openai     and set the environment variable OPENAI_API_KEY</span>
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+client = OpenAI()
+response = client.embeddings.create(
+    model=<span class="s">"text-embedding-3-small"</span>,
+    input=<span class="s">"Dogs are allowed in the office"</span>,
+)
+vector = response.data[0].embedding
+print(len(vector))   <span class="c"># 1536 numbers</span></code></pre></div>
+    <div class="callout remember"><b class="lbl">Golden rule</b><p>Use the <b>same</b> embedding model for your documents and your questions. Vectors from two different models live in different spaces and cannot be compared.</p></div>
+    <div class="prose">
+      <p>To choose a model, check the <a href="https://huggingface.co/spaces/mteb/leaderboard" target="_blank" rel="noopener">MTEB embedding leaderboard on Hugging Face</a>. When the video was recorded, Gemini and Qwen3 embedding models were near the top. Rankings change often, so look at the current list.</p>
+    </div>
+    <details class="lab">
+      <summary>Lab 2 notes: embedding models</summary>
+      <div>
+        <ol class="steps">
+          <li><div><b>Keyword limitation demo.</b> Create the venv, install requirements, run the keyword demo with the query “distributed workforce policies”. Almost every score is 0 because no document has those words. Question: what is keyword search missing? <b>Answer: synonyms and context.</b></div></li>
+          <li><div><b>Install embedding packages:</b> <code>pip install sentence-transformers huggingface-hub openai</code></div></li>
+          <li><div><b>Run the semantic search demo.</b> It loads the docs, loads all-MiniLM-L6-v2, embeds the docs and the query, scores with <code>np.dot</code> and prints the ranking. Run with <code>uv run python semantic_search_demo.py</code> (or plain <code>python</code> inside the venv).</div></li>
+          <li><div><b>Read the score.</b> Similarity between “remote work policy” and “distributed workforce policies”: <b>0.3982</b>, the top result. The meaning matched even with zero shared words.</div></li>
+          <li><div><b>MCQ:</b> which approach understands the meaning of queries better? <b>Semantic search.</b></div></li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 7 ================= -->
+  <section id="vectordb" data-nav="7 · Vector databases">
+    <div class="eyebrow"><b>Part 7</b> · Storing and searching millions of vectors</div>
+    <h2>Vector databases</h2>
+    <p class="oneline">A vector database stores embeddings and finds the nearest ones to a question fast, using an index instead of checking every vector.</p>
+    <div class="prose">
+      <h3>The scale problem</h3>
+      <p>Comparing the question with three sentences is easy. The Policy Copilot has hundreds of long documents. With 500 documents at 384 dimensions, comparing the question with every stored vector costs 500 × 384 = <b>192,000 multiplications per question</b>. That is like finding a number in a phone book by reading every page. Fine for a small book, hopeless for millions of entries.</p>
+      <h3>What a vector database does</h3>
+      <p>Think of it as a smart librarian who knows exactly which shelf to check. It is fast, uses resources efficiently and scales, because of <b>indexing</b>.</p>
+      <p><b>Indexing</b> means organising the vectors into neighbourhoods <em>ahead of time</em>. Animal policies sit together, health benefits together, remote-work policies together. When someone asks about bringing a dog to work, the search goes straight to the animal neighbourhood and only compares there.</p>
+    </div>
+    <div class="panel vdb" id="w-vdb">
+      <div class="panel-head"><h3>Brute force versus an index</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">Question: “Can I bring my dog to work?” (the diamond). Each dot is a stored policy chunk. Watch how many comparisons each method needs.</p>
+      <svg id="vdbSvg" viewBox="0 0 430 260" role="img" aria-label="Clusters of document vectors with a query point"></svg>
+      <div class="row"><button class="btn" id="vdbBrute">Brute force: check every vector</button><button class="btn ghost" id="vdbIdx">Indexed: check one neighbourhood</button></div>
+      <div class="counter" id="vdbCount">Comparisons: <b>0</b></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:4px 0">
+      <h4>How much work does brute force cost?</h4>
+      <div class="row">
+        <label class="field" for="vdbN">Stored chunks<select id="vdbN"><option value="500">500</option><option value="10000">10,000</option><option value="100000">100,000</option><option value="1000000">1,000,000</option></select></label>
+        <label class="field" for="vdbD">Dimensions<select id="vdbD"><option value="384">384 (MiniLM)</option><option value="768">768</option><option value="1536">1536 (OpenAI small)</option></select></label>
+      </div>
+      <p id="vdbMath"></p>
+    </div>
+    <div class="prose">
+      <h3>The three indexing algorithms named in the video</h3>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Algorithm</th><th>Idea in one line</th><th>Everyday analogy</th></tr></thead>
+      <tbody>
+        <tr><td><b>HNSW</b><br><span class="small muted">Hierarchical Navigable Small World</span></td><td>A graph where each vector links to its most similar neighbours, in layers from sparse to dense. Search starts at an entry point and hops toward closer and closer neighbours. Fast and accurate, so it is the default in most vector databases.</td><td>Express highway to the right city, then local roads to the right street.</td></tr>
+        <tr><td><b>IVF</b><br><span class="small muted">Inverted File index</span></td><td>Split vectors into clusters, each with a centre. Compare the question with the centres, then search only the closest cluster(s).</td><td>Go to the right aisle in a library, then scan that aisle.</td></tr>
+        <tr><td><b>LSH</b><br><span class="small muted">Locality-Sensitive Hashing</span></td><td>Hash functions that put similar vectors into the same “bucket”. Search only the question's bucket.</td><td>Sorting letters into pigeonholes by postcode.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="panel">
+      <h4>HNSW at a glance</h4>
+      <svg viewBox="0 0 470 215" role="img" aria-label="Three-layer HNSW graph with a search path from the top layer down to the nearest node" style="width:100%;height:auto;display:block">
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)">
+          <text x="4" y="44">Layer 2</text><text x="4" y="109">Layer 1</text><text x="4" y="174">Layer 0</text>
+          <text x="4" y="56" font-size="8.5">few nodes</text><text x="4" y="186" font-size="8.5">all nodes</text>
+        </g>
+        <g stroke="var(--line)" stroke-width="1.5">
+          <line x1="100" y1="40" x2="290" y2="40"/><line x1="290" y1="40" x2="440" y2="40"/>
+          <line x1="100" y1="105" x2="190" y2="105"/><line x1="190" y1="105" x2="290" y2="105"/><line x1="290" y1="105" x2="360" y2="105"/><line x1="360" y1="105" x2="440" y2="105"/>
+          <line x1="100" y1="170" x2="440" y2="170"/>
+        </g>
+        <g stroke="var(--line)" stroke-dasharray="3 3">
+          <line x1="100" y1="40" x2="100" y2="170"/><line x1="290" y1="40" x2="290" y2="170"/><line x1="440" y1="40" x2="440" y2="170"/>
+          <line x1="190" y1="105" x2="190" y2="170"/><line x1="360" y1="105" x2="360" y2="170"/>
+        </g>
+        <g stroke="var(--accent)" stroke-width="3" fill="none">
+          <line x1="100" y1="40" x2="290" y2="40"/><line x1="290" y1="40" x2="290" y2="105"/><line x1="290" y1="105" x2="360" y2="105"/><line x1="360" y1="105" x2="360" y2="170"/><line x1="360" y1="170" x2="400" y2="170"/>
+        </g>
+        <g fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5">
+          <circle cx="100" cy="40" r="6"/><circle cx="290" cy="40" r="6"/><circle cx="440" cy="40" r="6"/>
+          <circle cx="100" cy="105" r="6"/><circle cx="190" cy="105" r="6"/><circle cx="290" cy="105" r="6"/><circle cx="360" cy="105" r="6"/><circle cx="440" cy="105" r="6"/>
+          <circle cx="100" cy="170" r="6"/><circle cx="145" cy="170" r="6"/><circle cx="190" cy="170" r="6"/><circle cx="240" cy="170" r="6"/><circle cx="290" cy="170" r="6"/><circle cx="325" cy="170" r="6"/><circle cx="360" cy="170" r="6"/><circle cx="440" cy="170" r="6"/>
+        </g>
+        <circle cx="400" cy="170" r="8" fill="var(--r)"/>
+        <circle cx="100" cy="40" r="6" fill="var(--accent)"/>
+        <g font-family="Atkinson Hyperlegible, sans-serif" font-size="11" fill="var(--ink)">
+          <text x="88" y="24">start</text><text x="374" y="200">nearest match</text>
+        </g>
+      </svg>
+      <p class="small muted">The search takes big jumps on the sparse top layer, drops down a layer, takes smaller jumps, and finishes on the bottom layer where every vector lives. It visits a handful of nodes instead of all of them.</p>
+    </div>
+    <div class="callout info"><b class="lbl">Interview extra</b><p>These indexes do <b>approximate nearest neighbour (ANN)</b> search. They trade a tiny bit of accuracy (they might occasionally miss the true closest vector) for a huge gain in speed. Checking every vector is called exact or flat search.</p></div>
+    <div class="prose"><h3>Popular vector databases</h3></div>
+    <div class="grid3">
+      <div class="card"><h4>Chroma</h4><p class="small">Open source, Python-friendly, free, runs on your laptop. Best for learning, students and small projects.</p></div>
+      <div class="card"><h4>Pinecone</h4><p class="small">Fully managed cloud service: they run the infrastructure, you send data and queries. Used in production by large companies. Pay per use.</p></div>
+      <div class="card"><h4>Weaviate</h4><p class="small">Open-source vector database with a GraphQL API. Another solid production option.</p></div>
+    </div>
+    <p class="small muted">The video's advice: start with Chroma to learn and experiment, then move to Pinecone or similar for production.</p>
+    <div class="prose">
+      <h3>Using ChromaDB, step by step</h3>
+      <ol class="steps">
+        <li><div><b>Install:</b> <code>pip install chromadb</code></div></li>
+        <li><div><b>Create a client</b> (the connection to the database).</div></li>
+        <li><div><b>Create a collection</b> called <code>policies</code>. A collection is like a table. Chroma prepares storage for vectors and metadata, and sets up its default embedding model (all-MiniLM-L6-v2).</div></li>
+        <li><div><b>Add documents</b> with <code>collection.add()</code>. For each one, Chroma converts the text to a 384-number vector, saves it, and inserts it into the HNSW index. It is searchable immediately.</div></li>
+        <li><div><b>Query</b> with <code>collection.query()</code>. Chroma embeds the question with the same model and returns the nearest documents.</div></li>
+      </ol>
+    </div>
+    <div class="code"><div class="code-head"><span>python · ChromaDB</span><button class="copy">Copy</button></div><pre><code><span class="k">import</span> chromadb
+
+client = chromadb.Client()                       <span class="c"># in-memory: data is lost when the program stops</span>
+collection = client.create_collection(name=<span class="s">"policies"</span>)
+
+collection.add(
+    ids=[<span class="s">"pets-1"</span>, <span class="s">"home-office-1"</span>],             <span class="c"># every entry needs a unique id</span>
+    documents=[
+        <span class="s">"Dogs are allowed in the office on Fridays."</span>,
+        <span class="s">"Remote staff can claim up to $500 for home office furniture."</span>,
+    ],
+    metadatas=[{<span class="s">"source"</span>: <span class="s">"pet_policy.md"</span>}, {<span class="s">"source"</span>: <span class="s">"home_office_setup.md"</span>}],
+)
+
+results = collection.query(query_texts=[<span class="s">"Can I bring my dog?"</span>], n_results=1)
+print(results[<span class="s">"documents"</span>], results[<span class="s">"distances"</span>])</code></pre></div>
+    <div class="grid2">
+      <div class="card"><h4>Make it persistent</h4><p class="small"><code>chromadb.Client()</code> keeps everything in RAM, so your data disappears when the program ends. Fine for learning, not for production. Use <code>PersistentClient</code> with a folder path so data survives restarts.</p></div>
+      <div class="card"><h4>Change the embedding model</h4><p class="small">Pass an <code>embedding_function</code> when creating the collection, e.g. OpenAI's embeddings with your API key, or any custom function.</p></div>
+    </div>
+    <div class="code"><div class="code-head"><span>python · persistent client + custom embeddings</span><button class="copy">Copy</button></div><pre><code><span class="k">import</span> chromadb
+<span class="k">from</span> chromadb.utils <span class="k">import</span> embedding_functions
+
+client = chromadb.PersistentClient(path=<span class="s">"./chroma_db"</span>)   <span class="c"># saved to disk</span>
+
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+    api_key=<span class="s">"YOUR_OPENAI_API_KEY"</span>,
+    model_name=<span class="s">"text-embedding-3-small"</span>,
+)
+collection = client.get_or_create_collection(
+    name=<span class="s">"policies"</span>,
+    embedding_function=openai_ef,
+)</code></pre></div>
+    <details class="lab">
+      <summary>Lab 3 notes: vector databases</summary>
+      <div>
+        <ol class="steps">
+          <li><div><b>Concept question:</b> the main advantage of a vector database over keeping embeddings in memory is fast, scalable similarity search through indexing (plus persistence).</div></li>
+          <li><div>Go to the project folder, activate the venv, install <code>sentence-transformers</code> and then <code>chromadb</code>.</div></li>
+          <li><div><b>init vector DB script:</b> imports chromadb and sentence-transformers, creates a client with <code>chromadb.Client()</code>, creates a collection named <code>techcorp_docs</code>, loads all-MiniLM-L6-v2, adds one test document with <code>collection.add()</code> and prints <code>collection.count()</code>.</div></li>
+          <li><div><b>store documents script:</b> same setup, but loads the real TechCorp files through a helper function and adds them all.</div></li>
+          <li><div><b>vector search demo script:</b> runs queries against the stored vectors and prints the nearest documents.</div></li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 8 ================= -->
+  <section id="chunking" data-nav="8 · Chunking">
+    <div class="eyebrow"><b>Part 8</b> · Cutting big documents into searchable pieces</div>
+    <h2>Chunking</h2>
+    <p class="oneline">Chunking splits long documents into small focused pieces, so a search returns the one paragraph that answers the question instead of the whole handbook.</p>
+    <div class="prose">
+      <h3>The precision problem</h3>
+      <p>Imagine a 50-page employee handbook stored as <em>one</em> entry. Chroma will happily create one embedding for it. But when someone asks “What's the remote work policy?”, the result is the entire 50 pages. The user (and the LLM) must dig through mostly irrelevant text. With chunking, the same search returns only the remote-work section.</p>
+      <h3>Chunking strategies</h3>
+      <ul>
+        <li><b>Fixed-size chunks:</b> cut every N characters (e.g. 500). Simple and reliable, but can cut sentences in half: “Dogs are allowed” ends up in one chunk and “on Fridays” in the next.</li>
+        <li><b>Overlap:</b> repeat the last ~50 characters of each chunk at the start of the next. If a sentence gets cut, both chunks still carry the context.</li>
+        <li><b>Sentence-based:</b> each sentence is a chunk.</li>
+        <li><b>Paragraph-based:</b> each paragraph is a chunk.</li>
+        <li><b>Recursive (LangChain's RecursiveCharacterTextSplitter):</b> tries to split at paragraphs first, then lines, then sentences, then words, and packs pieces up to the size limit. The usual default.</li>
+        <li><b>Semantic and agentic chunking:</b> split by changes in meaning, or let an LLM decide. Mentioned in the video as out of scope.</li>
+      </ul>
+      <h3>The balance</h3>
+    </div>
+    <div class="grid2">
+      <div class="card"><span class="pill bad">Too small</span><p class="small">Context is lost. Information is fragmented, so the answer is incomplete (“Dogs are allowed” without “on Fridays”).</p></div>
+      <div class="card"><span class="pill bad">Too large</span><p class="small">Poor precision. Lots of irrelevant text, slower search, and overwhelming results. You are back to the original problem.</p></div>
+    </div>
+    <div class="panel" id="w-chunk">
+      <div class="panel-head"><h3>Chunking playground</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">Change the strategy, chunk size and overlap. The search box acts like the retriever: it picks the best chunk for the question. Edit the handbook text too.</p>
+      <div class="chunk-ctl">
+        <label class="field" for="chMode">Strategy
+          <select id="chMode">
+            <option value="none">No chunking (whole document)</option>
+            <option value="fixed" selected>Fixed size (characters)</option>
+            <option value="recursive">Recursive (sentence-aware, LangChain style)</option>
+            <option value="sentence">Sentence-based</option>
+            <option value="paragraph">Paragraph-based</option>
+          </select></label>
+        <label class="field" for="chSize">Chunk size: <b id="chSizeV">200</b> characters<input type="range" id="chSize" min="80" max="600" step="10" value="200"></label>
+        <label class="field" for="chOv">Overlap: <b id="chOvV">50</b> characters<input type="range" id="chOv" min="0" max="150" step="5" value="50"></label>
+      </div>
+      <div class="row"><input type="text" id="chQ" aria-label="Question for chunk search" value="internet speed requirements"></div>
+      <div class="legend"><span><i class="sw" style="background:var(--a-soft);outline:1px solid var(--a)"></i>overlap repeated from the previous chunk</span><span><i class="sw" style="background:var(--r-soft);outline:1px solid var(--r)"></i>chunk returned for the question</span></div>
+      <div id="chStats" class="verdict ok"></div>
+      <div class="chunks" id="chOut"></div>
+      <details class="lab"><summary>Edit the handbook text</summary><div><textarea id="chText" rows="12" aria-label="Handbook text"></textarea></div></details>
+    </div>
+    <div class="prose">
+      <h3>Guidelines from the video</h3>
+      <ul>
+        <li><b>Size:</b> 200–500 characters per chunk is a good balance of context and precision.</li>
+        <li><b>Overlap:</b> 50–100 characters to keep continuity.</li>
+        <li><b>Boundaries:</b> split at sentence ends, never mid-word, and keep paragraphs together where possible.</li>
+        <li><b>Content type matters:</b> technical documents may need different sizes than general policies.</li>
+        <li><b>Test with real questions:</b> check that chunks actually answer them, that overlap preserves meaning, and adjust the size by watching search results.</li>
+      </ul>
+      <h3>How chunks go into the vector database</h3>
+      <ol class="steps">
+        <li><div>Chunk the large document.</div></li>
+        <li><div>Add each chunk to the collection with a unique id (e.g. <code>handbook-chunk-0</code>, <code>handbook-chunk-1</code>) and metadata such as the source file.</div></li>
+        <li><div>At query time, the search returns the specific chunks that are most relevant.</div></li>
+      </ol>
+    </div>
+    <div class="code"><div class="code-head"><span>python · simple chunker with overlap (no libraries)</span><button class="copy">Copy</button></div><pre><code><span class="k">def</span> chunk_text(text, chunk_size=500, overlap=50):
+    chunks, start = [], 0
+    <span class="k">while</span> start &lt; len(text):
+        end = min(start + chunk_size, len(text))
+        <span class="c"># try to end at a sentence boundary inside this window</span>
+        <span class="k">if</span> end != len(text):
+            last_period = text.rfind(<span class="s">". "</span>, start, end)
+            <span class="k">if</span> last_period != -1 <span class="k">and</span> last_period + 1 - start &gt;= chunk_size // 2:
+                end = last_period + 1
+        chunks.append(text[start:end].strip())
+        <span class="k">if</span> end == len(text):          <span class="c"># reached the end of the document</span>
+            <span class="k">break</span>
+        start = max(end - overlap, start + 1)   <span class="c"># step back to create the overlap</span>
+    <span class="k">return</span> chunks</code></pre></div>
+    <div class="code"><div class="code-head"><span>python · LangChain + spaCy splitters (used in the lab)</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install langchain-text-splitters spacy</span>
+<span class="c"># python -m spacy download en_core_web_sm</span>
+<span class="k">from</span> langchain_text_splitters <span class="k">import</span> RecursiveCharacterTextSplitter, SpacyTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=200,                      <span class="c"># max characters per chunk</span>
+    chunk_overlap=50,                    <span class="c"># characters shared between neighbours</span>
+    separators=[<span class="s">"\n\n"</span>, <span class="s">"\n"</span>, <span class="s">". "</span>, <span class="s">" "</span>, <span class="s">""</span>],  <span class="c"># try these in order</span>
+)
+chunks = splitter.split_text(document)
+<span class="k">for</span> i, c <span class="k">in</span> enumerate(chunks):
+    print(i, len(c), c)
+
+sentence_splitter = SpacyTextSplitter(chunk_size=200)   <span class="c"># sentence-aware chunks</span>
+sentence_chunks = sentence_splitter.split_text(document)
+
+<span class="c"># store the chunks in Chroma with unique ids</span>
+collection.add(
+    ids=[f<span class="s">"handbook-chunk-{i}"</span> <span class="k">for</span> i <span class="k">in</span> range(len(chunks))],
+    documents=chunks,
+    metadatas=[{<span class="s">"source"</span>: <span class="s">"employee_handbook.md"</span>}] * len(chunks),
+)</code></pre></div>
+    <p class="small muted">Older LangChain versions import from <code>langchain.text_splitter</code> instead of <code>langchain_text_splitters</code>.</p>
+    <details class="lab">
+      <summary>Lab 4 notes: chunking</summary>
+      <div>
+        <ol class="steps">
+          <li><div><b>Chunking problem demo.</b> A sample handbook is stored as one chunk; searching “internet speed requirements” returns the whole document. Question: what is the problem? <b>Answer: large documents return irrelevant results.</b></div></li>
+          <li><div><b>Install LangChain and spaCy.</b> LangChain gives <code>RecursiveCharacterTextSplitter</code> for smart chunking; spaCy (an NLP library) gives <code>SpacyTextSplitter</code> for sentence-aware chunking.</div></li>
+          <li><div><b>Basic chunking script:</b> chunk_size 200, chunk_overlap 50, a list of separators, then <code>splitter.split_text()</code> and print each chunk.</div></li>
+          <li><div><b>Sentence chunking script:</b> the same with spaCy.</div></li>
+          <li><div><b>Chunked search script:</b> builds one collection without chunking and one with chunking, runs the same queries on both and compares. The chunked collection returns focused answers.</div></li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 9 ================= -->
+  <section id="pipeline" data-nav="9 · The full RAG pipeline">
+    <div class="eyebrow"><b>Part 9</b> · Putting it all together</div>
+    <h2>The complete RAG pipeline</h2>
+    <p class="oneline">RAG runs in two phases: an offline phase that prepares the documents once, and an online phase that runs for every question.</p>
+    <div class="prose">
+      <p>Chunking, embedding and storing thousands of documents takes a long time. So all of that happens <b>before</b> users start asking questions. The video calls this preparation the <b>RAG pipeline</b> (you will also hear “ingestion” or “indexing pipeline”).</p>
+    </div>
+    <div class="grid2">
+      <div class="card"><span class="pill muted" style="background:var(--sunk)">Phase 1 · offline, done once</span>
+        <ol class="steps small" style="margin-top:6px">
+          <li><div>Load the policy documents.</div></li>
+          <li><div>Chunk them (size 500, overlap 50).</div></li>
+          <li><div>Embed each chunk (the video uses OpenAI's embedding model).</div></li>
+          <li><div>Store vectors + text + metadata in the vector DB.</div></li>
+        </ol></div>
+      <div class="card"><span class="pill g">Phase 2 · online, every question</span>
+        <ol class="steps small" style="margin-top:6px">
+          <li><div>Embed the user's question with the same model.</div></li>
+          <li><div><span class="pill r">Retrieve</span> the top-k most similar chunks.</div></li>
+          <li><div><span class="pill a">Augment</span> a prompt: rules + chunks + question.</div></li>
+          <li><div><span class="pill g">Generate</span> the answer with the LLM and return it.</div></li>
+        </ol></div>
+    </div>
+    <div class="panel" id="w-pipe">
+      <div class="panel-head"><h3>Run the Policy Copilot</h3><span class="tryit">Try it</span></div>
+      <p class="small muted">Ask anything about TechCorp policies. The simulator embeds your question (toy model from Part 4), retrieves the top 3 chunks, builds the real augmented prompt, and writes the answer from the best chunk. Try an off-limits topic like salary, or something not in the documents.</p>
+      <div class="row"><input type="text" id="pQ" aria-label="Question for the Policy Copilot" value="What's the reimbursement policy for home office setup?"><button class="btn" id="pGo">Ask</button></div>
+      <div class="chips" id="pChips"></div>
+      <label class="tog small"><input type="checkbox" id="pVoice"> Use the fine-tuned CEO voice (Part 2)</label>
+      <div class="pipe" aria-hidden="true">
+        <div class="pipe-row"><span class="small muted" style="width:60px">Online</span><span class="pnode" data-p="q">Question</span><span class="parr">→</span><span class="pnode" data-p="e">Embed</span><span class="parr">→</span><span class="pnode r" data-p="r">Retrieve top 3</span><span class="parr">→</span><span class="pnode a" data-p="a">Augment prompt</span><span class="parr">→</span><span class="pnode g" data-p="g">Generate</span></div>
+      </div>
+      <div class="pout" id="pOut"></div>
+    </div>
+    <div class="code"><div class="code-head"><span>python · minimal end-to-end RAG</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install chromadb openai langchain-text-splitters</span>
+<span class="k">import</span> chromadb
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
+<span class="k">from</span> langchain_text_splitters <span class="k">import</span> RecursiveCharacterTextSplitter
+
+llm = OpenAI()   <span class="c"># reads OPENAI_API_KEY</span>
+
+<span class="c"># ---------- Phase 1: offline indexing ----------</span>
+<span class="k">def</span> build_index(documents):                          <span class="c"># documents = {"file.md": "text", ...}</span>
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    collection = chromadb.PersistentClient(path=<span class="s">"./chroma_db"</span>).get_or_create_collection(<span class="s">"policies"</span>)
+    <span class="k">for</span> name, text <span class="k">in</span> documents.items():
+        chunks = splitter.split_text(text)
+        collection.add(
+            ids=[f<span class="s">"{name}-{i}"</span> <span class="k">for</span> i <span class="k">in</span> range(len(chunks))],
+            documents=chunks,
+            metadatas=[{<span class="s">"source"</span>: name}] * len(chunks),
+        )
+    <span class="k">return</span> collection
+
+<span class="c"># ---------- Phase 2: online, per question ----------</span>
+<span class="k">def</span> retrieve(collection, question, k=3):
+    hits = collection.query(query_texts=[question], n_results=k)
+    <span class="k">return</span> list(zip(hits[<span class="s">"documents"</span>][0], hits[<span class="s">"metadatas"</span>][0]))
+
+<span class="k">def</span> augment(question, chunks):
+    context = <span class="s">"\n"</span>.join(f<span class="s">"[{m['source']}] {text}"</span> <span class="k">for</span> text, m <span class="k">in</span> chunks)
+    <span class="k">return</span> f<span class="s">"""You are TechCorp's Policy Copilot.
+Answer ONLY from the context. If the answer is not there, say you don't know.
+Never discuss salaries or performance-review appeals; send those to HR.
+Cite the source file in brackets.
+
+Context:
+{context}
+
+Question: {question}
+Answer:"""</span>
+
+<span class="k">def</span> generate(prompt):
+    reply = llm.chat.completions.create(
+        model=<span class="s">"YOUR_CHAT_MODEL"</span>,                  <span class="c"># any chat model you have access to</span>
+        messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: prompt}],
+    )
+    <span class="k">return</span> reply.choices[0].message.content
+
+<span class="k">def</span> rag_pipeline(collection, question):
+    <span class="k">return</span> generate(augment(question, retrieve(collection, question)))</code></pre></div>
+    <details class="lab">
+      <summary>Lab 5 notes: complete RAG pipeline</summary>
+      <div>
+        <p>One script combines all earlier labs, section by section:</p>
+        <ol class="steps">
+          <li><div><b>Document loading and chunking:</b> sample documents and a text splitter produce the chunks.</div></li>
+          <li><div><b>Vector database setup:</b> a ChromaDB collection stores the chunks.</div></li>
+          <li><div><b>User query processing:</b> takes the question and runs the similarity search.</div></li>
+          <li><div><b>Context augmentation:</b> builds a prompt with the retrieved policies, the user's question and some prompt-engineering instructions.</div></li>
+          <li><div><b>Response generation:</b> sends the prompt to the LLM.</div></li>
+          <li><div><b>The complete pipeline function</b> calls each step in order; <code>main()</code> runs it.</div></li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= PART 10 ================= -->
+  <section id="caching" data-nav="10 · Caching">
+    <div class="eyebrow"><b>Part 10</b> · Production: speed</div>
+    <h2>Caching</h2>
+    <p class="oneline">Caching stores the result of expensive work so the next identical (or similar) question is answered instantly.</p>
+    <div class="prose">
+      <h3>Why RAG is slow</h3>
+      <p>Every question triggers several expensive operations: generating an embedding, searching the vector database, and calling the LLM API. Without optimisation one query can take nearly a second (~950 ms). Yet people ask the same things again and again: “What's the reimbursement policy for home office setup?” gets asked dozens of times. A cached reply can take about <b>5 ms</b>, which is <b>190× faster</b>.</p>
+      <h3>The four cache types</h3>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Cache</th><th>Stores</th><th>Helps when</th></tr></thead>
+      <tbody>
+        <tr><td><b>Query cache</b></td><td>Complete question → answer pairs</td><td>Frequently asked questions repeat word for word. The simplest one.</td></tr>
+        <tr><td><b>Embedding cache</b></td><td>Text → its vector</td><td>The same text gets embedded repeatedly (policy chunks reused across searches).</td></tr>
+        <tr><td><b>Vector search cache</b></td><td>Query → retrieved chunks</td><td>Different wordings return the same chunks (“remote work” and “working from home”).</td></tr>
+        <tr><td><b>LLM response cache</b></td><td>Prompt → generated answer</td><td>LLM calls are the slowest and most expensive step, so this cache is the most valuable.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="prose">
+      <p>Cache at the right level: not too granular, not too broad, with sensible expiry times.</p>
+      <h3>Redis and TTL</h3>
+      <p><b>Redis</b> is a very fast in-memory key-value store, popular for caching because it supports many data types and has built-in expiry.</p>
+      <ol class="steps">
+        <li><div><b>Make a key:</b> hash the question (and context) into a short fixed string, e.g. with SHA-256.</div></li>
+        <li><div><b>Check the cache first.</b> If the key exists, return the stored answer immediately (cache <b>hit</b>).</div></li>
+        <li><div><b>Otherwise run the full RAG pipeline</b> (cache <b>miss</b>), then store the answer under the key with an expiry time.</div></li>
+      </ol>
+      <p><b>TTL (time to live)</b> is that expiry time. Long enough to give speed benefits, short enough that answers don't go stale after a policy changes. For slow-changing policy documents something like an hour works; dynamic content needs shorter TTLs.</p>
+    </div>
+    <div class="callout warn"><b class="lbl">Precise version</b><p>The video says hashing lets “similar queries share the same entry”. A hash only matches <b>identical</b> text (after any normalisation such as lowercasing). Sharing between differently-worded but similar questions needs a <b>semantic cache</b>: embed the question and reuse a cached answer when cosine similarity is above a threshold. The simulator below lets you try both.</p></div>
+    <div class="panel" id="w-cache">
+      <div class="panel-head"><h3>Cache simulator</h3><span class="tryit">Try it</span></div>
+      <div class="row"><input type="text" id="cQ" aria-label="Question for cache simulator" value="What's the remote work policy?"><button class="btn" id="cGo">Ask</button></div>
+      <div class="chips" id="cChips"></div>
+      <div class="row small"><label class="tog"><input type="checkbox" id="cSem"> Semantic cache (similar wording also hits)</label><button class="btn ghost" id="cFF">Fast-forward 30 minutes</button><button class="btn ghost" id="cClr">Clear cache</button></div>
+      <div id="cRes"></div>
+      <div class="stats" id="cStats"></div>
+      <div class="tablewrap"><table id="cTable"></table></div>
+      <p class="small muted">TTL is 60 minutes. Miss timing breakdown: embed 60 ms, vector search 90 ms, LLM 800 ms.</p>
+    </div>
+    <div class="code"><div class="code-head"><span>python · Redis query cache</span><button class="copy">Copy</button></div><pre><code><span class="c"># pip install redis    (and run a Redis server, e.g. docker run -p 6379:6379 redis)</span>
+<span class="k">import</span> hashlib
+<span class="k">import</span> redis
+
+cache = redis.Redis(host=<span class="s">"localhost"</span>, port=6379, decode_responses=True)
+TTL_SECONDS = 3600   <span class="c"># 1 hour</span>
+
+<span class="k">def</span> cached_rag(question, collection):
+    normalized = question.strip().lower()
+    key = <span class="s">"rag:"</span> + hashlib.sha256(normalized.encode()).hexdigest()
+
+    answer = cache.get(key)
+    <span class="k">if</span> answer <span class="k">is</span> <span class="k">not</span> None:                 <span class="c"># HIT: ~5 ms</span>
+        <span class="k">return</span> answer
+
+    answer = rag_pipeline(collection, question)   <span class="c"># MISS: ~950 ms</span>
+    cache.setex(key, TTL_SECONDS, answer)          <span class="c"># store with expiry</span>
+    <span class="k">return</span> answer</code></pre></div>
+  </section>
+
+  <!-- ================= PART 11 ================= -->
+  <section id="monitoring" data-nav="11 · Monitoring">
+    <div class="eyebrow"><b>Part 11</b> · Production: visibility</div>
+    <h2>Monitoring</h2>
+    <p class="oneline">You can't manage what you don't measure. Monitoring tracks how fast and how well the RAG system works, and alerts you when it doesn't.</p>
+    <div class="grid2">
+      <div class="card"><h4>General metrics</h4><ul class="small" style="margin:0;padding-left:1.1em">
+        <li><b>Response time (latency):</b> how fast questions are answered.</li>
+        <li><b>Throughput:</b> how many queries are handled per second.</li>
+        <li><b>Error rate:</b> what percentage of requests fail.</li></ul></div>
+      <div class="card"><h4>RAG-specific metrics</h4><ul class="small" style="margin:0;padding-left:1.1em">
+        <li><b>Retrieval quality:</b> how relevant the returned chunks are to the question.</li>
+        <li><b>Embedding performance:</b> how long generating vectors takes.</li>
+        <li><b>Chunking efficiency:</b> how well documents are being split.</li></ul></div>
+    </div>
+    <div class="prose">
+      <p><b>Alert thresholds</b> tell you immediately when something is wrong. The video's examples: response time above <b>2 seconds</b> means a performance issue; error rate above <b>5%</b> means a system problem. Base thresholds on real measured performance, not theory, to avoid <b>alert fatigue</b> (so many false alarms that people stop paying attention).</p>
+    </div>
+    <div class="panel" id="w-mon">
+      <div class="panel-head"><h3>Alert panel</h3><span class="tryit">Try it</span></div>
+      <div class="mon">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <label class="field" for="mLat">Response time: <b id="mLatV"></b><input type="range" id="mLat" min="0.2" max="4" step="0.1" value="0.9"></label>
+          <label class="field" for="mErr">Error rate: <b id="mErrV"></b><input type="range" id="mErr" min="0" max="15" step="0.5" value="1.5"></label>
+          <label class="field" for="mRel">Retrieval relevance (avg similarity of top chunk): <b id="mRelV"></b><input type="range" id="mRel" min="0" max="1" step="0.05" value="0.72"></label>
+        </div>
+        <div id="mOut"></div>
+      </div>
+      <p class="small muted">The relevance threshold (0.5) is an example value, not from the video.</p>
+    </div>
+  </section>
+
+  <!-- ================= PART 12 ================= -->
+  <section id="errors" data-nav="12 · Error handling">
+    <div class="eyebrow"><b>Part 12</b> · Production: reliability</div>
+    <h2>Error handling and graceful degradation</h2>
+    <p class="oneline">Things will break. A good RAG system still gives the user <em>some</em> useful answer instead of a crash.</p>
+    <div class="prose">
+      <p>In production, vector databases go down, LLM services become unavailable, and networks time out. The goal is <b>graceful degradation</b>: keep working at reduced capability. The video's <b>cascading fallback</b> strategy tries each option in turn:</p>
+      <ol class="steps">
+        <li><div>Full RAG pipeline.</div></li>
+        <li><div>If that fails, keyword search.</div></li>
+        <li><div>If that fails, return the retrieved chunks directly (no LLM summary).</div></li>
+        <li><div>If that fails, simple text matching.</div></li>
+        <li><div>Last resort: a helpful error message.</div></li>
+      </ol>
+    </div>
+    <div class="panel" id="w-fall">
+      <div class="panel-head"><h3>Break things and see what the user gets</h3><span class="tryit">Try it</span></div>
+      <div class="grid2">
+        <div class="toggles" id="fToggles"></div>
+        <div class="tiers" id="fTiers"></div>
+      </div>
+      <div class="verdict ok" id="fOut"></div>
+    </div>
+    <div class="prose">
+      <h3>Circuit breaker</h3>
+      <p>If a service keeps failing, calling it again and again wastes time and makes things worse. A <b>circuit breaker</b> (named after the electrical switch) stops the calls for a while:</p>
+      <ul>
+        <li><b>Closed</b> (normal): requests flow through. Failures are counted.</li>
+        <li><b>Open</b>: after too many failures, requests are blocked immediately and the fallback is used. No waiting on a dead service.</li>
+        <li><b>Half-open</b>: after a cool-down, a few test requests are allowed through. If they succeed, the circuit closes and normal operation resumes. If they fail, it opens again.</li>
+      </ul>
+    </div>
+    <div class="panel" id="w-cb">
+      <div class="panel-head"><h3>Circuit breaker for the LLM service</h3><span class="tryit">Try it</span></div>
+      <div class="cb" aria-live="polite"><span class="cbs closed" data-s="closed">Closed</span><span class="parr">→</span><span class="cbs open" data-s="open">Open</span><span class="parr">→</span><span class="cbs half" data-s="half">Half-open</span></div>
+      <p class="small muted" id="cbInfo"></p>
+      <div class="row"><button class="btn" id="cbOk">Send request: service OK</button><button class="btn" id="cbFail">Send request: service fails</button><button class="btn ghost" id="cbWait">Cool-down timer ends</button></div>
+      <div class="log" id="cbLog"></div>
+    </div>
+    <div class="code"><div class="code-head"><span>python · cascading fallbacks</span><button class="copy">Copy</button></div><pre><code><span class="k">def</span> answer(question):
+    strategies = [
+        full_rag,               <span class="c"># 1. embeddings + vector DB + LLM</span>
+        keyword_rag,            <span class="c"># 2. BM25 search + LLM</span>
+        return_chunks_only,     <span class="c"># 3. vector DB results, no LLM</span>
+        simple_text_match,      <span class="c"># 4. plain substring search in memory</span>
+    ]
+    <span class="k">for</span> strategy <span class="k">in</span> strategies:
+        <span class="k">try</span>:
+            <span class="k">return</span> strategy(question)
+        <span class="k">except</span> Exception <span class="k">as</span> err:
+            log.warning(<span class="s">"%s failed: %s"</span>, strategy.__name__, err)
+    <span class="k">return</span> <span class="s">"Sorry, the policy assistant is unavailable right now. Please try again in a few minutes or contact HR."</span></code></pre></div>
+  </section>
+
+  <!-- ================= PART 13 ================= -->
+  <section id="production" data-nav="13 · Production architecture">
+    <div class="eyebrow"><b>Part 13</b> · Running it for thousands of users</div>
+    <h2>Production architecture on Kubernetes</h2>
+    <p class="oneline">A production RAG system is split into layers of small services, each of which can scale on its own.</p>
+    <div class="prose">
+      <p>Real systems face problems our demos don't: performance, failures, and thousands of users at once. The video shows a system running on <b>Kubernetes</b> (a platform that runs and scales containerised services). It has four parts. Click any component to see what it does.</p>
+    </div>
+    <div class="panel">
+      <div class="arch">
+        <span class="arch-k">Kubernetes cluster</span>
+        <div class="layer app"><h4>Application layer · what users touch</h4><div class="comps" data-layer="app"></div></div>
+        <div class="layer pipe2"><h4>RAG pipeline layer · microservices</h4><div class="comps" data-layer="pipe"></div></div>
+        <div class="layer data"><h4>Data layer · storage</h4><div class="comps" data-layer="data"></div></div>
+        <div class="layer mon2"><h4>Monitoring stack</h4><div class="comps" data-layer="mon"></div></div>
+      </div>
+      <div class="archinfo" id="archInfo" aria-live="polite"></div>
+    </div>
+    <div class="prose">
+      <p><b>Why layers?</b> Separation of concerns. Applications handle user interaction, the pipeline does the RAG work, and the data layer provides storage. Because each pipeline step is its own <b>microservice</b>, you can run 10 copies of the busy generation service and 2 of the chunking service. This keeps the system highly available under thousands of concurrent users.</p>
+      <h3>Advanced topics the video mentions but doesn't cover</h3>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Topic</th><th>One-line preview</th></tr></thead>
+      <tbody>
+        <tr><td><b>Hybrid search</b></td><td>Combine keyword (BM25) and semantic scores, so exact terms like product codes and meaning both count.</td></tr>
+        <tr><td><b>Reranking</b></td><td>Retrieve ~20 candidates quickly, then reorder them with a slower, more accurate model (a cross-encoder) and keep the best few.</td></tr>
+        <tr><td><b>Query expansion</b></td><td>Rewrite or add synonyms to the user's question before searching, to catch more relevant chunks.</td></tr>
+        <tr><td><b>Context compression</b></td><td>Trim retrieved chunks to only the sentences that matter, so the prompt is shorter and cheaper.</td></tr>
+        <tr><td><b>Multimodal RAG</b></td><td>Retrieve images, tables, audio or video, not just text.</td></tr>
+        <tr><td><b>Graph RAG</b></td><td>Store facts as a knowledge graph (entities and relationships) and retrieve connected facts.</td></tr>
+        <tr><td><b>Federated RAG</b></td><td>Search across several separate data sources or organisations without centralising all the data.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ================= LABS ================= -->
+  <section id="labs" data-nav="Labs recap">
+    <div class="eyebrow"><b>Hands-on</b> · Commands for every lab</div>
+    <h2>Labs recap and setup commands</h2>
+    <p class="oneline">The video's labs run in a browser-based Linux machine with VS Code. These are the commands to do the same on your own laptop.</p>
+    <div class="prose">
+      <h3>One-time setup (Linux, macOS or WSL)</h3>
+      <ol class="steps">
+        <li><div>Open a terminal in the project folder (the lab uses <code>rag-project</code>).</div></li>
+        <li><div>Create a virtual environment: an isolated folder with its own Python packages, so projects don't clash.</div></li>
+        <li><div>Activate it. Your prompt will show <code>(venv)</code>. You must activate it again in every new terminal.</div></li>
+        <li><div>Install the packages, then run a script.</div></li>
+      </ol>
+    </div>
+    <div class="code"><div class="code-head"><span>bash · setup with pip</span><button class="copy">Copy</button></div><pre><code>cd rag-project
+python3 -m venv venv
+source venv/bin/activate          <span class="c"># Windows: venv\Scripts\activate</span>
+pip install -r requirements.txt   <span class="c"># or install packages one by one:</span>
+pip install scikit-learn rank_bm25 numpy sentence-transformers chromadb langchain-text-splitters spacy openai redis
+python -m spacy download en_core_web_sm
+python semantic_search_demo.py</code></pre></div>
+    <div class="code"><div class="code-head"><span>bash · setup with uv (what the lab uses)</span><button class="copy">Copy</button></div><pre><code>pip install uv                    <span class="c"># a fast replacement for pip + venv</span>
+cd rag-project
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+uv run python semantic_search_demo.py</code></pre></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Lab</th><th>What you do</th><th>Answers from the video</th></tr></thead>
+      <tbody>
+        <tr><td><b>1 · Keyword search</b></td><td>Explore docs, grep, TF-IDF script, BM25 script, hybrid</td><td>3 handbook docs · grep results saved to <code>extracted_content</code> · top TF-IDF score 0.4676 (<code>pet_policy.md</code>)</td></tr>
+        <tr><td><b>2 · Embedding models</b></td><td>Keyword limitation demo, install embeddings, semantic search demo</td><td>“Missing synonyms and context” · 0.3982 for remote work policy · semantic search understands meaning better</td></tr>
+        <tr><td><b>3 · Vector databases</b></td><td>Install ChromaDB, init a collection, store docs, vector search</td><td>Vector DBs give fast, scalable search through indexing</td></tr>
+        <tr><td><b>4 · Chunking</b></td><td>Chunking problem demo, LangChain + spaCy, basic / sentence / chunked search</td><td>“Large documents return irrelevant results” · chunk 200, overlap 50</td></tr>
+        <tr><td><b>5 · Full pipeline</b></td><td>Read the complete RAG script section by section</td><td>Load + chunk → vector DB → query → augment → generate</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ================= CHEAT SHEET ================= -->
+  <section id="cheat" data-nav="Cheat sheet">
+    <div class="eyebrow"><b>Revision</b> · The whole course on one screen</div>
+    <h2>Cheat sheet</h2>
+    <div class="cheat">
+      <div class="card"><span class="k">RAG</span><span class="v">Retrieve → Augment → Generate</span><span class="small muted">Fetch facts at query time, not training time.</span></div>
+      <div class="card"><span class="k">Use prompting for</span><span class="v">Rules &amp; refusals</span><span class="small muted">“Send salary questions to HR.”</span></div>
+      <div class="card"><span class="k">Use fine-tuning for</span><span class="v">Stable style / voice</span><span class="small muted">The CEO's tone.</span></div>
+      <div class="card"><span class="k">Use RAG for</span><span class="v">Changing private facts</span><span class="small muted">With citations.</span></div>
+      <div class="card"><span class="k">Keyword search</span><span class="v">TF-IDF, BM25</span><span class="small muted">Exact words; fails on synonyms.</span></div>
+      <div class="card"><span class="k">Semantic search</span><span class="v">Embeddings + similarity</span><span class="small muted">Matches meaning.</span></div>
+      <div class="card"><span class="k">all-MiniLM-L6-v2</span><span class="v">384 dims · 22M params · 90 MB</span><span class="small muted">Free, local.</span></div>
+      <div class="card"><span class="k">Similarity</span><span class="v">cos = A·B ÷ (|A||B|)</span><span class="small muted">1 same, 0 unrelated, −1 opposite.</span></div>
+      <div class="card"><span class="k">Vector DB index</span><span class="v">HNSW (default), IVF, LSH</span><span class="small muted">Approximate nearest neighbour.</span></div>
+      <div class="card"><span class="k">Chroma</span><span class="v">Client = RAM · PersistentClient = disk</span><span class="small muted">Learn on Chroma, scale on Pinecone.</span></div>
+      <div class="card"><span class="k">Chunking</span><span class="v">200–500 chars · 50–100 overlap</span><span class="small muted">Split at sentence boundaries.</span></div>
+      <div class="card"><span class="k">Pipeline</span><span class="v">Offline: chunk, embed, store</span><span class="small muted">Online: embed question, search, prompt, LLM.</span></div>
+      <div class="card"><span class="k">Caching</span><span class="v">950 ms → 5 ms</span><span class="small muted">Query, embedding, search, LLM caches · Redis · TTL.</span></div>
+      <div class="card"><span class="k">Alerts</span><span class="v">&gt; 2 s latency · &gt; 5% errors</span><span class="small muted">Avoid alert fatigue.</span></div>
+      <div class="card"><span class="k">Failures</span><span class="v">Fallback cascade + circuit breaker</span><span class="small muted">Closed → Open → Half-open.</span></div>
+      <div class="card"><span class="k">Production</span><span class="v">App · Pipeline · Data · Monitoring</span><span class="small muted">Chroma, Redis, PostgreSQL · Prometheus, Grafana, Jaeger, ELK.</span></div>
+    </div>
+  </section>
+
+  <!-- ================= INTERVIEW ================= -->
+  <section id="interview" data-nav="Interview questions">
+    <div class="eyebrow"><b>Placement prep</b> · Questions you are likely to be asked</div>
+    <h2>Interview questions with answers</h2>
+    <p class="oneline">Short, precise answers. Read the question, answer it out loud, then open it to check.</p>
+    <div class="qa-tools">
+      <input type="text" id="qaSearch" aria-label="Filter interview questions" placeholder="Filter questions, e.g. chunk, BM25, cache">
+      <div class="chips" id="qaTopics"></div>
+      <button class="btn ghost" id="qaAll">Open all</button>
+    </div>
+    <div id="qaList">
+      <details class="qa" data-t="Basics"><summary><span class="qn">Q1</span><span>What is RAG and why is it needed?<span class="qtag">Basics</span></span></summary><div>
+        <p>RAG (Retrieval-Augmented Generation) is a technique where, before an LLM answers, the system retrieves relevant passages from an external knowledge source and adds them to the prompt. It is needed because LLMs only know their training data: they have no access to private or recent information and will hallucinate when asked about it. RAG grounds the answer in real documents.</p></div></details>
+      <details class="qa" data-t="Basics"><summary><span class="qn">Q2</span><span>Explain the R, the A and the G with an example.<span class="qtag">Basics</span></span></summary><div>
+        <p>Question: “What's the home office reimbursement policy?”</p><ul>
+        <li><b>Retrieve:</b> search the policy documents and find the home office section.</li>
+        <li><b>Augment:</b> build a prompt containing that section plus the question.</li>
+        <li><b>Generate:</b> the LLM writes the answer from that context.</li></ul></div></details>
+      <details class="qa" data-t="Basics"><summary><span class="qn">Q3</span><span>What is hallucination, and how does RAG reduce it?<span class="qtag">Basics</span></span></summary><div>
+        <p>Hallucination is when an LLM produces a fluent, confident answer that is false or made up. RAG reduces it by giving the model the actual facts and instructing it to answer only from that context, and to say “I don't know” if the context doesn't contain the answer. It reduces hallucination; it does not eliminate it completely.</p></div></details>
+      <details class="qa" data-t="Choosing"><summary><span class="qn">Q4</span><span>RAG vs fine-tuning vs prompt engineering: when do you use each?<span class="qtag">Choosing</span></span></summary><div><ul>
+        <li><b>Prompt engineering:</b> behaviour rules, restrictions, format. Cheap and instant to change.</li>
+        <li><b>Fine-tuning:</b> stable patterns like style, tone or a domain's writing format. Changes the model's weights.</li>
+        <li><b>RAG:</b> private, frequently changing facts that need citations.</li></ul>
+        <p>They are complementary; a production chatbot often uses all three.</p></div></details>
+      <details class="qa" data-t="Choosing"><summary><span class="qn">Q5</span><span>Why not fine-tune a model on the company's documents instead of using RAG?<span class="qtag">Choosing</span></span></summary><div><ul>
+        <li>Every document change requires retraining.</li><li>Training is slow and expensive.</li><li>No citations, so answers can't be verified.</li><li>Facts learned in training are recalled unreliably, especially with lots of data.</li><li>The model has a knowledge cutoff.</li></ul>
+        <p>RAG retrieves at query time, so an updated document is used on the next question.</p></div></details>
+      <details class="qa" data-t="Keyword"><summary><span class="qn">Q6</span><span>What is keyword search and what is its main limitation?<span class="qtag">Keyword</span></span></summary><div>
+        <p>Keyword (lexical) search ranks documents by how often the query's exact words appear in them. Its limitation is vocabulary mismatch: if the user uses a synonym (“allowance” vs “reimbursement”), the document is not found. It also ignores word meaning and context.</p></div></details>
+      <details class="qa" data-t="Keyword"><summary><span class="qn">Q7</span><span>Explain TF-IDF.<span class="qtag">Keyword</span></span></summary><div>
+        <p>TF-IDF weights each word by <b>term frequency</b> (how often it appears in a document) times <b>inverse document frequency</b> (how rare it is across all documents, roughly log(N/df)). Common words like “office” get low weight; distinctive words like “furniture” get high weight. Documents and queries become TF-IDF vectors compared with cosine similarity.</p></div></details>
+      <details class="qa" data-t="Keyword"><summary><span class="qn">Q8</span><span>How is BM25 better than TF-IDF?<span class="qtag">Keyword</span></span></summary><div><ul>
+        <li><b>Term-frequency saturation</b> (k1): repeated mentions add less and less, so keyword stuffing doesn't win.</li>
+        <li><b>Document-length normalisation</b> (b): long documents aren't favoured just for having more words.</li></ul>
+        <p>It is the default ranking in Elasticsearch, OpenSearch and Lucene.</p></div></details>
+      <details class="qa" data-t="Keyword"><summary><span class="qn">Q9</span><span>When is keyword search still better than semantic search?<span class="qtag">Keyword</span></span></summary><div>
+        <p>For exact identifiers and rare terms: error codes, product IDs, names, acronyms. Embeddings can blur these. That is why many systems use <b>hybrid search</b> (BM25 + embeddings).</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q10</span><span>What is an embedding?<span class="qtag">Embeddings</span></span></summary><div>
+        <p>An embedding is a fixed-length vector of numbers that represents the meaning of a piece of text. Texts with similar meaning have vectors that are close together, measured with cosine similarity or distance. all-MiniLM-L6-v2 produces 384 numbers per text; OpenAI's text-embedding-3-small produces 1536.</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q11</span><span>What is semantic search and how does it work?<span class="qtag">Embeddings</span></span></summary><div>
+        <p>Search by meaning instead of exact words. Steps: embed all documents (or chunks) once; embed the query with the same model; compute similarity between the query vector and document vectors; return the top-k closest.</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q12</span><span>Dot product, cosine similarity, Euclidean distance: what's the difference?<span class="qtag">Embeddings</span></span></summary><div><ul>
+        <li><b>Dot product:</b> Σ aᵢbᵢ. Depends on both direction and length.</li>
+        <li><b>Cosine similarity:</b> dot ÷ (|a||b|). Direction only; range −1 to 1.</li>
+        <li><b>Euclidean distance:</b> straight-line distance; smaller is more similar.</li></ul>
+        <p>For unit-length (normalised) vectors, dot product equals cosine, and ranking by Euclidean distance gives the same order.</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q13</span><span>What does “384-dimensional” and “22 million parameters” mean for all-MiniLM-L6-v2?<span class="qtag">Embeddings</span></span></summary><div>
+        <p>384-dimensional: each text becomes a list of 384 numbers. 22 million parameters: the model has 22M learned weights. It is ~90 MB, runs on a laptop CPU, and is good enough for sentence similarity, while GPT-class models have billions of parameters because they must generate text and reason.</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q14</span><span>Local vs API embedding models: trade-offs?<span class="qtag">Embeddings</span></span></summary><div>
+        <p>Local (sentence-transformers): free, private, offline, but uses your hardware and is often less accurate than the best large models. API (OpenAI, Gemini, Cohere): high quality and no hardware to manage, but costs per token, needs internet, and sends data to a third party.</p></div></details>
+      <details class="qa" data-t="Embeddings"><summary><span class="qn">Q15</span><span>Can you embed documents with one model and queries with another?<span class="qtag">Embeddings</span></span></summary><div>
+        <p>No. Each model creates its own vector space (often with different dimensions too). Similarity across two spaces is meaningless. If you change the embedding model you must re-embed every document.</p></div></details>
+      <details class="qa" data-t="Vector DB"><summary><span class="qn">Q16</span><span>Why use a vector database instead of a NumPy array?<span class="qtag">Vector DB</span></span></summary><div>
+        <p>Brute-force comparison costs N × d multiplications per query (500 × 384 = 192,000, and millions at real scale). A vector DB provides ANN indexes (HNSW, IVF) for sub-linear search, plus persistence, metadata storage and filtering, updates and deletes, and scaling.</p></div></details>
+      <details class="qa" data-t="Vector DB"><summary><span class="qn">Q17</span><span>Explain HNSW.<span class="qtag">Vector DB</span></span></summary><div>
+        <p>Hierarchical Navigable Small World builds a multi-layer graph. Each vector is linked to its nearest neighbours. Upper layers are sparse (long jumps), the bottom layer has every vector. Search starts at an entry point on the top layer, greedily moves to closer neighbours, drops down a layer, and repeats. It is fast and highly accurate, which is why most vector DBs use it by default. The cost is extra memory for the graph.</p></div></details>
+      <details class="qa" data-t="Vector DB"><summary><span class="qn">Q18</span><span>What is approximate nearest neighbour (ANN) search?<span class="qtag">Vector DB</span></span></summary><div>
+        <p>Search that returns <em>very likely</em> the closest vectors without checking every one. It trades a small drop in recall for a large speed-up. HNSW, IVF and LSH are ANN methods. Exact (flat) search checks every vector.</p></div></details>
+      <details class="qa" data-t="Vector DB"><summary><span class="qn">Q19</span><span>Chroma vs Pinecone vs Weaviate?<span class="qtag">Vector DB</span></span></summary><div>
+        <p>Chroma: open source, Python-first, runs locally, great for learning and prototypes. Pinecone: fully managed cloud service, pay per use, production scale. Weaviate: open source with a GraphQL API, self-host or cloud. Start with Chroma; move to a managed or production-grade DB for scale.</p></div></details>
+      <details class="qa" data-t="Vector DB"><summary><span class="qn">Q20</span><span>What's the difference between chromadb.Client() and PersistentClient()?<span class="qtag">Vector DB</span></span></summary><div>
+        <p><code>Client()</code> is in-memory: all data is lost when the program stops. <code>PersistentClient(path="...")</code> saves to disk so data survives restarts.</p></div></details>
+      <details class="qa" data-t="Chunking"><summary><span class="qn">Q21</span><span>What is chunking and why is it needed?<span class="qtag">Chunking</span></span></summary><div>
+        <p>Splitting documents into smaller pieces before embedding. One embedding for a 50-page document blurs all its topics together, and retrieval would return the whole thing. Chunks give precise retrieval, fit in the LLM's context window, and reduce prompt cost.</p></div></details>
+      <details class="qa" data-t="Chunking"><summary><span class="qn">Q22</span><span>How do you choose chunk size and overlap?<span class="qtag">Chunking</span></span></summary><div>
+        <p>Too small loses context; too large loses precision. Start around 200–500 characters with 50–100 characters overlap (10–20%), split at sentence or paragraph boundaries, then tune by testing real questions and checking whether the retrieved chunks contain the answer. Different content (code, legal text, FAQs) needs different sizes.</p></div></details>
+      <details class="qa" data-t="Chunking"><summary><span class="qn">Q23</span><span>Why add overlap between chunks?<span class="qtag">Chunking</span></span></summary><div>
+        <p>So a sentence or idea that falls on a chunk boundary still appears whole in at least one chunk. Without overlap, “Dogs are allowed” and “on Fridays” could be separated and neither chunk answers the question.</p></div></details>
+      <details class="qa" data-t="Chunking"><summary><span class="qn">Q24</span><span>Name some chunking strategies.<span class="qtag">Chunking</span></span></summary><div>
+        <p>Fixed-size (characters or tokens), sentence-based, paragraph-based, recursive character splitting (LangChain's default: paragraphs → lines → sentences → words), semantic chunking (split where meaning changes), and agentic chunking (an LLM decides the splits).</p></div></details>
+      <details class="qa" data-t="Pipeline"><summary><span class="qn">Q25</span><span>Walk me through a complete RAG pipeline.<span class="qtag">Pipeline</span></span></summary><div>
+        <p><b>Offline:</b> load documents → chunk → embed each chunk → store vector + text + metadata in a vector DB. <b>Online:</b> embed the question with the same model → retrieve top-k chunks → build a prompt (instructions + chunks + question) → LLM generates the answer, ideally with citations.</p></div></details>
+      <details class="qa" data-t="Pipeline"><summary><span class="qn">Q26</span><span>What goes into the augmented prompt?<span class="qtag">Pipeline</span></span></summary><div>
+        <p>A role and rules (answer only from context, say “I don't know” otherwise, cite sources, topics to refuse), the retrieved chunks labelled with their sources, and the user's question.</p></div></details>
+      <details class="qa" data-t="Pipeline"><summary><span class="qn">Q27</span><span>How do you update the knowledge base when a policy changes?<span class="qtag">Pipeline</span></span></summary><div>
+        <p>Re-chunk and re-embed only the changed document, then upsert those chunks by id and delete the old ones. No model retraining is needed. Also clear or expire cached answers that depended on it.</p></div></details>
+      <details class="qa" data-t="Pipeline"><summary><span class="qn">Q28</span><span>What is top-k and how do you choose it?<span class="qtag">Pipeline</span></span></summary><div>
+        <p>k is how many chunks are retrieved per question. Small k may miss the answer; large k adds noise, cost and can confuse the LLM. Typical values are 3–5, tuned by testing. Reranking lets you retrieve many and keep only the best few.</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q29</span><span>How would you make a RAG system faster?<span class="qtag">Production</span></span></summary><div>
+        <p>Caching at four levels (query, embedding, vector search, LLM response) in Redis with a TTL; ANN indexes; smaller embedding models; fewer, smaller chunks in the prompt; streaming the LLM output.</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q30</span><span>Exact cache vs semantic cache?<span class="qtag">Production</span></span></summary><div>
+        <p>An exact cache keys on a hash of the (normalised) question, so only identical questions hit. A semantic cache embeds the question and reuses an answer if a cached question is similar above a threshold, e.g. cosine ≥ 0.9. Semantic caches hit more often but risk returning an answer to a subtly different question.</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q31</span><span>What would you monitor in a RAG system?<span class="qtag">Production</span></span></summary><div>
+        <p>General: latency, throughput, error rate. RAG-specific: retrieval quality (relevance of returned chunks), embedding time, chunking efficiency, cache hit rate, LLM token cost. Alert on thresholds set from real data (e.g. latency &gt; 2 s, errors &gt; 5%).</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q32</span><span>What is graceful degradation? What is a circuit breaker?<span class="qtag">Production</span></span></summary><div>
+        <p>Graceful degradation: when a component fails, fall back to a simpler working path (keyword search, raw chunks, text match, friendly error) instead of crashing. A circuit breaker stops calling a failing service after repeated failures (open), then sends a few test requests after a cool-down (half-open) and resumes normal calls (closed) if they succeed.</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q33</span><span>Describe a production RAG architecture.<span class="qtag">Production</span></span></summary><div>
+        <p>On Kubernetes: an application layer (web UI, mobile backend, admin), a RAG pipeline layer split into independently scalable microservices (query processing, chunking, embedding, retrieval, augmentation, generation), a data layer (vector DB like Chroma, Redis cache, PostgreSQL metadata) and a monitoring stack (Prometheus metrics, Grafana dashboards, Jaeger tracing, ELK logging).</p></div></details>
+      <details class="qa" data-t="Production"><summary><span class="qn">Q34</span><span>How do you evaluate whether retrieval is working? <span class="qtag">Beyond the video</span></span></summary><div>
+        <p>Build a test set of questions with the correct source chunk. Measure <b>recall@k</b> (is the right chunk in the top k?), <b>precision@k</b> (how many of the top k are relevant?) and <b>MRR</b> (how high the first correct chunk ranks). For answers, check faithfulness (is every claim supported by the context?) and answer relevance.</p></div></details>
+    </div>
+  </section>
+
+  <!-- ================= QUIZ ================= -->
+  <section id="quiz" data-nav="Quiz">
+    <div class="eyebrow"><b>Self-check</b> · 16 questions</div>
+    <h2>Quiz</h2>
+    <div class="score" id="qzScore">Score: 0 / 0 answered</div>
+    <div class="quiz" id="qz"></div>
+    <button class="btn ghost" id="qzReset" style="align-self:flex-start">Reset quiz</button>
+  </section>
+
+  <!-- ================= GLOSSARY ================= -->
+  <section id="glossary" data-nav="Glossary">
+    <div class="eyebrow"><b>Reference</b> · Every technical term, in plain words</div>
+    <h2>Glossary</h2>
+    <input type="text" id="glQ" aria-label="Search glossary" placeholder="Search a term, e.g. TTL, HNSW, parameter">
+    <div class="gloss" id="gl"></div>
+  </section>
+
+  <footer>Notes built from the transcript of KodeKloud's “RAG Crash Course for Beginners”. Toy models in the demos are simplified on purpose and labelled as such; real embedding models learn their numbers from data.</footer>
+  </main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const REDUCE=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const wait=ms=>new Promise(r=>setTimeout(r,REDUCE?0:ms));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+
+/* ================= shared data ================= */
+const DOCS=[
+ {id:"pets",file:"pet_policy.md",text:"Dogs are allowed in the office on Fridays. Pets must be vaccinated and stay in the pet-friendly zone on floor 2."},
+ {id:"homeoffice",file:"home_office_setup.md",text:"Employees who work remotely can claim reimbursement of up to $500 for home office furniture and equipment, such as a chair and monitor. Submit receipts within 30 days of purchase."},
+ {id:"internet",file:"internet_policy.md",text:"Remote employees need an internet connection of at least 50 Mbps. TechCorp reimburses up to $40 per month for broadband."},
+ {id:"remote",file:"remote_work.md",text:"Employees may work from home up to three days a week. Working fully remote on a permanent basis needs director approval."},
+ {id:"leave",file:"leave_policy.md",text:"Full-time employees get 12 sick days per year. Unused sick days do not carry over to the next year."},
+ {id:"reviews",file:"performance_reviews.md",text:"Performance reviews are conducted twice a year, in June and December. Managers share written feedback within two weeks."},
+ {id:"travel",file:"travel_policy.md",text:"Business travel must be booked through the travel portal. Book economy class for flights under six hours."},
+ {id:"holidays",file:"holiday_calendar.md",text:"TechCorp observes 10 public holidays a year. The holiday calendar is published every January."}
+];
+const DIMS=["animals","money","remote","workplace","leave","reviews","travel","tech"];
+const DIM_LABEL={animals:"animals",money:"money",remote:"remote",workplace:"office",leave:"leave",reviews:"reviews",travel:"travel",tech:"internet"};
+const DOCVEC={
+ pets:[0.95,0,0,0.35,0,0,0,0],
+ homeoffice:[0,0.8,0.6,0.7,0,0,0,0.1],
+ internet:[0,0.35,0.6,0.1,0,0,0,0.9],
+ remote:[0,0,0.9,0.25,0.15,0,0,0],
+ leave:[0,0,0,0.1,0.95,0,0,0],
+ reviews:[0,0,0,0.2,0,0.95,0,0],
+ travel:[0,0.25,0,0.1,0,0,0.95,0],
+ holidays:[0,0,0,0.1,0.8,0,0.15,0]
+};
+const LEX={
+ animals:"dog dogs puppy puppies pet pets cat cats animal animals",
+ money:"reimbursement reimbursements reimburse reimburses reimbursed allowance allowances stipend expense expenses claim claims money pay paid budget cost costs refund compensation salary salaries raise",
+ remote:"remote remotely home wfh distributed anywhere hybrid telework telecommute",
+ workplace:"office desk desks chair chairs furniture equipment workspace setup monitor laptop",
+ leave:"sick leave leaves vacation pto absence days holiday holidays",
+ reviews:"performance review reviews appraisal appraisals appeal appeals feedback",
+ travel:"travel trip trips flight flights hotel hotels mileage",
+ tech:"internet speed wifi broadband mbps vpn connection bandwidth"
+};
+const WORD2DIM={};
+Object.keys(LEX).forEach(d=>LEX[d].split(" ").forEach(w=>{WORD2DIM[w]=DIMS.indexOf(d);}));
+function norm(v){const n=Math.sqrt(v.reduce((s,x)=>s+x*x,0));return n?v.map(x=>x/n):v;}
+function cos(a,b){let d=0,na=0,nb=0;for(let i=0;i<a.length;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return na&&nb?d/Math.sqrt(na*nb):0;}
+function embed(text){const v=new Array(DIMS.length).fill(0);(text.toLowerCase().match(/[a-z]+/g)||[]).forEach(w=>{if(w in WORD2DIM)v[WORD2DIM[w]]+=1;});return v.some(x=>x>0)?norm(v):null;}
+function semRank(q){const qv=embed(q);return {qv,rows:DOCS.map(d=>({doc:d,score:qv?cos(qv,DOCVEC[d.id]):0})).sort((a,b)=>b.score-a.score)};}
+
+/* keyword engine */
+const STOP=new Set("a an the of for to in on at and or is are am be can i my me do does what whats what's how many much when where which who we you your our it its this that with from by as up per need get i'm much".split(" "));
+function toks(t){return (t.toLowerCase().match(/[a-z0-9$]+/g)||[]).filter(w=>!STOP.has(w));}
+const KW=(function(){
+ const dt=DOCS.map(d=>toks(d.text)),N=DOCS.length,df={};
+ dt.forEach(ts=>new Set(ts).forEach(w=>{df[w]=(df[w]||0)+1;}));
+ const idf=w=>Math.log((1+N)/(1+(df[w]||0)))+1;
+ const tfidf=ts=>{const v={};ts.forEach(w=>{v[w]=(v[w]||0)+1;});let n=0;for(const w in v){v[w]*=idf(w);n+=v[w]*v[w];}n=Math.sqrt(n)||1;for(const w in v)v[w]/=n;return v;};
+ const dv=dt.map(tfidf),avg=dt.reduce((s,t)=>s+t.length,0)/N;
+ const bidf=w=>Math.log(1+(N-(df[w]||0)+0.5)/((df[w]||0)+0.5));
+ function search(q){
+  const terms=Array.from(new Set(toks(q)));
+  const qv=tfidf(terms.filter(w=>df[w]));
+  const rows=DOCS.map((d,i)=>{
+   const counts=terms.map(t=>dt[i].filter(w=>w===t).length);
+   let s=0;for(const w in qv)s+=qv[w]*(dv[i][w]||0);
+   let b=0;const k1=1.5,bb=0.75,dl=dt[i].length;
+   terms.forEach((t,j)=>{const f=counts[j];if(f)b+=bidf(t)*f*(k1+1)/(f+k1*(1-bb+bb*dl/avg));});
+   return {doc:d,counts,tfidf:s,bm25:b};
+  });
+  return {terms,rows,df,N};
+ }
+ return {search};
+})();
+
+/* copy buttons */
+$$(".code").forEach(c=>{const b=$(".copy",c);if(!b)return;b.addEventListener("click",()=>{const t=$("pre",c).innerText;const done=()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1400);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>sel());}else sel();
+ function sel(){const r=document.createRange();r.selectNodeContents($("pre",c));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Press Ctrl+C";setTimeout(()=>b.textContent="Copy",2000);}});});
+
+/* ================= nav + progress ================= */
+const secs=$$("main section[data-nav]");
+const toc=$("#toc");
+let done=store.get("rag-notes-done",{});
+secs.forEach(s=>{
+ const a=document.createElement("a");a.href="#"+s.id;a.dataset.id=s.id;a.innerHTML='<span class="tick" aria-hidden="true"></span><span>'+esc(s.dataset.nav)+"</span>";toc.appendChild(a);
+ const f=document.createElement("div");f.className="sec-foot";
+ const b=document.createElement("button");b.className="done-btn";b.type="button";b.dataset.id=s.id;
+ b.addEventListener("click",()=>{done[s.id]=!done[s.id];store.set("rag-notes-done",done);syncDone();});
+ f.appendChild(b);s.appendChild(f);
+});
+function syncDone(){
+ let n=0;secs.forEach(s=>{const on=!!done[s.id];if(on)n++;
+  const a=toc.querySelector('a[data-id="'+s.id+'"]');a.classList.toggle("done",on);
+  const b=s.querySelector(".done-btn");b.setAttribute("aria-pressed",on);b.textContent=on?"✓ Understood":"Mark as understood";});
+ $("#progText").textContent=n+" of "+secs.length+" sections understood";$("#progBar").style.width=(n/secs.length*100)+"%";
+}
+syncDone();
+if("IntersectionObserver" in window){
+ const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){$$("#toc a").forEach(a=>a.classList.toggle("active",a.dataset.id===e.target.id));const act=toc.querySelector("a.active");if(act&&toc.scrollWidth>toc.clientWidth){toc.scrollTo({left:act.offsetLeft-20,behavior:REDUCE?"auto":"smooth"});}}});},{rootMargin:"-35% 0px -60% 0px"});
+ secs.forEach(s=>io.observe(s));
+}
+
+/* ================= Part 1: RAG demo ================= */
+(function(){
+ const steps=[
+  {k:"r",name:"Retrieve",html:'<p class="small"><span class="pill r">Retrieve</span> Searched 8 policy files. Best match: <code>home_office_setup.md</code></p><p class="small">“Employees who work remotely can claim <mark>reimbursement of up to $500 for home office</mark> furniture and equipment, such as a chair and monitor. Submit receipts within 30 days of purchase.”</p>'},
+  {k:"a",name:"Augment",html:'<p class="small"><span class="pill a">Augment</span> The retrieved text is added to the prompt:</p><div class="promptbox"><span class="pr">Answer using only the policy below.</span>\n\n<span class="pc">POLICY (home_office_setup.md):\nEmployees who work remotely can claim reimbursement of up to $500 for home office furniture and equipment...</span>\n\n<span class="pq">QUESTION: What\'s the reimbursement policy for home office setup?</span></div>'},
+  {k:"g",name:"Generate",html:'<p class="small"><span class="pill g">Generate</span> The LLM answers from the context:</p><div class="final">If you work remotely, TechCorp reimburses up to <b>$500</b> for home office furniture and equipment such as a chair or monitor. Submit your receipts within <b>30 days</b> of purchase. <span class="small muted">Source: home_office_setup.md</span></div>'}
+ ];
+ let i=0;const out=$("#ragOut"),nx=$("#ragNext"),st=$("#ragSteps");
+ function render(){
+  st.innerHTML=steps.map((s,j)=>'<button type="button" data-j="'+j+'" class="'+(j<i?"on-"+s.k:"")+'">'+(j+1)+" "+s.name+"</button>").join("");
+  out.innerHTML=steps.slice(0,i).map(s=>'<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">'+s.html+"</div>").join("")||'<p class="small muted">Press the button to run the three RAG steps one at a time.</p>';
+  nx.disabled=i>=steps.length;nx.textContent=i<steps.length?"Run step "+(i+1)+": "+steps[i].name:"All three steps done";
+ }
+ nx.addEventListener("click",()=>{if(i<steps.length){i++;render();}});
+ $("#ragReset").addEventListener("click",()=>{i=0;render();});
+ st.addEventListener("click",e=>{const b=e.target.closest("button");if(b){i=+b.dataset.j+1;render();}});
+ render();
+})();
+
+/* ================= Part 2: scenarios ================= */
+(function(){
+ const L={p:"Prompt engineering",f:"Fine-tuning",r:"RAG"};
+ const S=[
+  ["Never discuss salaries; send those questions to HR.","p","A behaviour rule. Write it into the system prompt; no training or retrieval needed."],
+  ["Sound like our CEO: his words, his tone, his humour.","f","A stable style learned from many examples (speeches, emails). That is what fine-tuning is good at."],
+  ["Answer from the leave policy that was updated last week.","r","Fresh, private facts. RAG fetches the latest document at question time."],
+  ["Show which document each answer came from.","r","RAG knows which chunks it retrieved, so it can cite them. A fine-tuned model can't."],
+  ["Always reply in under 100 words, as bullet points.","p","Output format is an instruction. Put it in the prompt."],
+  ["Policies change monthly and we can't afford retraining.","r","Changing facts plus no retraining budget is exactly the case for RAG: just re-index the changed document."],
+  ["Use our house writing format learned from 500 approved answers.","f","Hundreds of example question/answer pairs teaching a consistent pattern is classic fine-tuning."]
+ ];
+ const box=$("#scen");let right=0,answered=0;
+ box.innerHTML=S.map((s,i)=>'<div class="scen-item" data-i="'+i+'"><b>'+esc(s[0])+'</b><div class="opts">'+["p","f","r"].map(k=>'<button type="button" data-k="'+k+'">'+L[k]+"</button>").join("")+'</div><p class="why" hidden></p></div>').join("");
+ box.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const it=b.closest(".scen-item");if(it.dataset.done)return;it.dataset.done=1;const s=S[+it.dataset.i];answered++;
+  if(b.dataset.k===s[1]){b.classList.add("right");right++;}else{b.classList.add("wrong");it.querySelector('[data-k="'+s[1]+'"]').classList.add("right");}
+  const w=it.querySelector(".why");w.hidden=false;w.textContent=(b.dataset.k===s[1]?"Correct. ":"Best answer: "+L[s[1]]+". ")+s[2];
+  $("#scenScore").textContent=right+" of "+answered+" correct"+(answered===S.length?" · all done":"");});
+})();
+
+/* ================= Part 3: keyword ================= */
+(function(){
+ const chips=["home office reimbursement","furniture","desk","WFH allowance","dogs","puppy","office"];
+ $("#kwChips").innerHTML=chips.map(c=>'<button type="button" class="chip">'+esc(c)+"</button>").join("");
+ $("#kwChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){$("#kwQ").value=b.textContent;run();}});
+ $("#kwGo").addEventListener("click",run);$("#kwQ").addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+ function hl(text,terms){return esc(text).replace(/[A-Za-z0-9$]+/g,w=>terms.indexOf(w.toLowerCase())>-1?"<mark>"+w+"</mark>":w);}
+ function run(){
+  const q=$("#kwQ").value;const r=KW.search(q);
+  const maxT=Math.max(...r.rows.map(x=>x.tfidf),1e-9),maxB=Math.max(...r.rows.map(x=>x.bm25),1e-9);
+  const sorted=r.rows.slice().sort((a,b)=>b.bm25-a.bm25||b.tfidf-a.tfidf);
+  const top=sorted[0];const any=top.bm25>0;
+  let h="<thead><tr><th>Document</th>"+r.terms.map(t=>'<th class="num">“'+esc(t)+'” count<br><span style="text-transform:none">in '+(r.df[t]||0)+"/"+r.N+" docs</span></th>").join("")+'<th>TF-IDF score</th><th>BM25 score</th></tr></thead><tbody>';
+  sorted.forEach(x=>{h+='<tr class="'+(any&&x===top?"top":"")+'"><td><code>'+esc(x.doc.file)+"</code></td>"+x.counts.map(c=>'<td class="num '+(c?"hit":"")+'">'+c+"</td>").join("")+
+   '<td><div class="scorecell"><div class="bar"><i style="width:'+(x.tfidf/maxT*100)+'%"></i></div><span class="num" style="font-family:var(--font-mono);font-size:.78rem">'+x.tfidf.toFixed(3)+'</span></div></td><td><div class="scorecell"><div class="bar r"><i style="width:'+(x.bm25/maxB*100)+'%"></i></div><span class="num" style="font-family:var(--font-mono);font-size:.78rem">'+x.bm25.toFixed(3)+"</span></div></td></tr>";});
+  h+="</tbody>";
+  if(!r.terms.length)h='<tbody><tr><td>Only stop words were typed, so there is nothing to search for.</td></tr></tbody>';
+  $("#kwTable").innerHTML=h;
+  const v=$("#kwVerdict");
+  if(!any){v.className="verdict bad";v.innerHTML="<b>No document contains these exact words.</b> Keyword search returns nothing, even though a relevant policy may exist under different wording. This is the vocabulary-mismatch problem that semantic search (Part 4) solves.";}
+  else{const common=r.terms.filter(t=>r.df[t]===r.N);v.className="verdict ok";v.innerHTML="<b>Top match: <code>"+esc(top.doc.file)+"</code></b><br>"+hl(top.doc.text,r.terms)+(common.length?'<br><span class="small">Note: “'+common.map(esc).join("”, “")+"” appears in every document, so it carries almost no weight.</span>":"");}
+ }
+ run();
+})();
+
+/* ================= Part 4: semantic ================= */
+(function(){
+ const ax=$("#axX"),ay=$("#axY");
+ const opts=DIMS.map((d,i)=>'<option value="'+i+'">'+DIM_LABEL[d]+"</option>").join("");ax.innerHTML=opts;ay.innerHTML=opts;ax.value="2";ay.value="1";
+ const chips=["WFH allowance","desk","Can I bring my puppy?","How many sick days do I get?","Can I work from home permanently?","When are appraisals?"];
+ $("#semChips").innerHTML=chips.map(c=>'<button type="button" class="chip">'+esc(c)+"</button>").join("");
+ $("#semChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){$("#semQ").value=b.textContent;run();}});
+ $("#semGo").addEventListener("click",run);$("#semQ").addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+ ax.addEventListener("change",run);ay.addEventListener("change",run);
+ function run(){
+  const q=$("#semQ").value;const {qv,rows}=semRank(q);const xi=+ax.value,yi=+ay.value;
+  const X=v=>50+v*285,Y=v=>300-v*270;
+  let s='<rect x="50" y="30" width="285" height="270" fill="var(--paper)" stroke="var(--line)"/>';
+  for(let t=0;t<=1.001;t+=0.25){s+='<line x1="'+X(t)+'" y1="30" x2="'+X(t)+'" y2="300" stroke="var(--line)" stroke-width="0.6"/><line x1="50" y1="'+Y(t)+'" x2="335" y2="'+Y(t)+'" stroke="var(--line)" stroke-width="0.6"/>';
+   s+='<text x="'+X(t)+'" y="315" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="JetBrains Mono, monospace">'+t.toFixed(2)+'</text><text x="44" y="'+(Y(t)+3)+'" font-size="9" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono, monospace">'+t.toFixed(2)+"</text>";}
+  s+='<text x="192" y="333" font-size="11" text-anchor="middle" fill="var(--ink)" font-weight="700">'+DIM_LABEL[DIMS[xi]]+' →</text><text x="14" y="165" font-size="11" text-anchor="middle" fill="var(--ink)" font-weight="700" transform="rotate(-90 14 165)">'+DIM_LABEL[DIMS[yi]]+" →</text>";
+  const top3=rows.slice(0,3).map(r=>r.doc.id);
+  if(qv&&rows[0].score>0){top3.forEach(id=>{const v=DOCVEC[id];s+='<line x1="'+X(qv[xi])+'" y1="'+Y(qv[yi])+'" x2="'+X(v[xi])+'" y2="'+Y(v[yi])+'" stroke="var(--r)" stroke-dasharray="4 3" stroke-width="1.3"/>';});}
+  const seen={};
+  DOCS.forEach(d=>{const v=DOCVEC[d.id];const key=Math.round(v[xi]*20)+","+Math.round(v[yi]*20);seen[key]=(seen[key]||0)+1;const off=(seen[key]-1)*11;const isTop=qv&&d.id===rows[0].doc.id&&rows[0].score>0;
+   s+='<circle cx="'+X(v[xi])+'" cy="'+Y(v[yi])+'" r="'+(isTop?7:5)+'" fill="'+(top3.indexOf(d.id)>-1&&qv?"var(--r)":"var(--muted)")+'"/>';
+   const lx=X(v[xi])+8,anchor=lx>270?"end":"start";
+   s+='<text x="'+(anchor==="end"?X(v[xi])-8:lx)+'" y="'+(Y(v[yi])-6-off)+'" font-size="9.5" fill="var(--ink)" text-anchor="'+anchor+'" font-family="JetBrains Mono, monospace">'+d.id+"</text>";});
+  if(qv){const qx=X(qv[xi]),qy=Y(qv[yi]);s+='<path d="M'+qx+" "+(qy-9)+" L"+(qx+9)+" "+qy+" L"+qx+" "+(qy+9)+" L"+(qx-9)+" "+qy+' Z" fill="var(--accent)"/><text x="'+(qx>270?qx-12:qx+12)+'" y="'+(qy+16)+'" font-size="10.5" font-weight="700" fill="var(--accent)" text-anchor="'+(qx>270?"end":"start")+'">your question</text>';}
+  $("#semSvg").innerHTML=s;
+  $("#qvec").innerHTML=DIMS.map((d,i)=>'<div title="'+DIM_LABEL[d]+": "+(qv?qv[i].toFixed(2):"0")+'"><i style="height:'+(qv?Math.max(2,qv[i]*52):2)+'px"></i><span>'+DIM_LABEL[d]+"</span></div>").join("");
+  const mx=Math.max(rows[0].score,1e-9);
+  $("#semRank").innerHTML=qv?rows.map((r,i)=>'<div class="rank-row '+(i===0?"top":"")+'"><span class="nm">'+esc(r.doc.file)+'</span><div class="bar r"><i style="width:'+(r.score/mx*100)+'%"></i></div><span class="v">'+r.score.toFixed(3)+"</span></div>").join(""):'<p class="small muted">The toy model knows none of these words, so it can\'t place the question. A real model has a vocabulary of about 30,000 word pieces and can embed any text.</p>';
+  const kr=KW.search(q).rows.slice().sort((a,b)=>b.bm25-a.bm25);const kwTop=kr[0].bm25>0?kr[0].doc.file:null;
+  const vv=$("#semVsKw");
+  if(!qv){vv.className="verdict warn";vv.textContent="No known words. Try one of the example chips.";return;}
+  if(!kwTop){vv.className="verdict ok";vv.innerHTML="<b>Keyword search found nothing</b> for this question (no exact word matches). Semantic search picked <code>"+esc(rows[0].doc.file)+"</code> by meaning.";}
+  else if(kwTop===rows[0].doc.file){vv.className="verdict ok";vv.innerHTML="Both methods agree: <code>"+esc(kwTop)+"</code>.";}
+  else{vv.className="verdict warn";vv.innerHTML="Keyword search picked <code>"+esc(kwTop)+"</code>; semantic search picked <code>"+esc(rows[0].doc.file)+"</code>.";}
+ }
+ run();
+})();
+
+/* ================= Part 5: dot product ================= */
+(function(){
+ const svg=$("#dotSvg");let A=[1,5],B=[2,4];
+ const presets=[["Dogs vs Pets",[1,5],[2,4]],["Dogs vs Remote",[1,5],[6,1]],["Pets vs Remote",[2,4],[6,1]],["Same direction",[2,2],[5,5]],["At right angles",[0,5],[5,0]]];
+ $("#dotChips").innerHTML=presets.map((p,i)=>'<button type="button" class="chip" data-i="'+i+'">'+p[0]+" ("+p[1].join(", ")+") · ("+p[2].join(", ")+")</button>").join("");
+ $("#dotChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){const p=presets[+b.dataset.i];A=p[1].slice();B=p[2].slice();draw();}});
+ const O={x:34,y:290},S=36;const P=v=>({x:O.x+v[0]*S,y:O.y-v[1]*S});
+ function f(n){return (Math.round(n*100)/100).toString();}
+ function draw(){
+  let s='<defs><marker id="ha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--r)"/></marker><marker id="hb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>';
+  for(let i=0;i<=7;i++){s+='<line x1="'+(O.x+i*S)+'" y1="'+(O.y-7*S)+'" x2="'+(O.x+i*S)+'" y2="'+O.y+'" stroke="var(--line)" stroke-width="'+(i?0.6:1.4)+'"/><line x1="'+O.x+'" y1="'+(O.y-i*S)+'" x2="'+(O.x+7*S)+'" y2="'+(O.y-i*S)+'" stroke="var(--line)" stroke-width="'+(i?0.6:1.4)+'"/>';
+   s+='<text x="'+(O.x+i*S)+'" y="'+(O.y+14)+'" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="JetBrains Mono, monospace">'+i+'</text>';if(i)s+='<text x="'+(O.x-8)+'" y="'+(O.y-i*S+3)+'" font-size="9" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono, monospace">'+i+"</text>";}
+  const pa=P(A),pb=P(B);
+  const angA=Math.atan2(A[1],A[0]),angB=Math.atan2(B[1],B[0]);const r=42;
+  if(Math.hypot(...A)>0&&Math.hypot(...B)>0){const a1=Math.min(angA,angB),a2=Math.max(angA,angB);s+='<path d="M'+(O.x+r*Math.cos(a1))+" "+(O.y-r*Math.sin(a1))+" A"+r+" "+r+" 0 0 0 "+(O.x+r*Math.cos(a2))+" "+(O.y-r*Math.sin(a2))+'" fill="none" stroke="var(--a)" stroke-width="2"/>';}
+  s+='<line x1="'+O.x+'" y1="'+O.y+'" x2="'+pa.x+'" y2="'+pa.y+'" stroke="var(--r)" stroke-width="3" marker-end="url(#ha)"/>';
+  s+='<line x1="'+O.x+'" y1="'+O.y+'" x2="'+pb.x+'" y2="'+pb.y+'" stroke="var(--accent)" stroke-width="3" marker-end="url(#hb)"/>';
+  s+='<circle class="handle" data-v="A" cx="'+pa.x+'" cy="'+pa.y+'" r="11" fill="var(--r)" fill-opacity="0.25" stroke="var(--r)"/><text x="'+(pa.x+12)+'" y="'+(pa.y-10)+'" font-size="12" font-weight="700" fill="var(--r)">A</text>';
+  s+='<circle class="handle" data-v="B" cx="'+pb.x+'" cy="'+pb.y+'" r="11" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)"/><text x="'+(pb.x+12)+'" y="'+(pb.y-10)+'" font-size="12" font-weight="700" fill="var(--accent)">B</text>';
+  svg.innerHTML=s;
+  const dot=A[0]*B[0]+A[1]*B[1],la=Math.hypot(A[0],A[1]),lb=Math.hypot(B[0],B[1]);const c=la&&lb?dot/(la*lb):0;const deg=Math.acos(Math.max(-1,Math.min(1,c)))*180/Math.PI;
+  const word=c>0.9?"very similar":c>0.7?"fairly similar":c>0.4?"somewhat related":"not similar";
+  $("#dotCalc").innerHTML='<div class="ln"><b>Vectors</b><span><span style="color:var(--r)">A = ('+f(A[0])+", "+f(A[1])+')</span>  <span style="color:var(--accent)">B = ('+f(B[0])+", "+f(B[1])+")</span></span></div>"+
+   '<div class="ln"><b>1. Multiply</b><span>'+f(A[0])+"×"+f(B[0])+" = "+f(A[0]*B[0])+",  "+f(A[1])+"×"+f(B[1])+" = "+f(A[1]*B[1])+"</span></div>"+
+   '<div class="ln"><b>2. Add (dot)</b><span>'+f(A[0]*B[0])+" + "+f(A[1]*B[1])+" = <b style=\"color:var(--ink)\">"+f(dot)+"</b></span></div>"+
+   '<div class="ln"><b>3. Lengths</b><span>|A| = √('+f(A[0]*A[0])+"+"+f(A[1]*A[1])+") = "+la.toFixed(2)+",  |B| = "+lb.toFixed(2)+"</span></div>"+
+   '<div class="ln"><b>4. Normalise</b><span>'+f(dot)+" ÷ ("+la.toFixed(2)+" × "+lb.toFixed(2)+") </span></div>"+
+   '<div><span class="muted">Cosine similarity</span><div class="big">'+c.toFixed(3)+'</div><span>Angle between them: '+deg.toFixed(1)+"° · <b>"+word+"</b></span></div>";
+ }
+ let drag=null;
+ function pt(e){const m=svg.getScreenCTM();if(!m)return null;const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(m.inverse());}
+ svg.addEventListener("pointerdown",e=>{const h=e.target.closest(".handle");if(h){drag=h.dataset.v;svg.setPointerCapture(e.pointerId);e.preventDefault();}});
+ svg.addEventListener("pointermove",e=>{if(!drag)return;const p=pt(e);if(!p)return;let x=Math.round((p.x-O.x)/S*2)/2,y=Math.round((O.y-p.y)/S*2)/2;x=Math.max(0,Math.min(7,x));y=Math.max(0,Math.min(7,y));if(x===0&&y===0)return;const v=drag==="A"?A:B;if(v[0]!==x||v[1]!==y){v[0]=x;v[1]=y;draw();}});
+ const end=()=>{drag=null;};svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
+ draw();
+})();
+
+/* ================= Part 7: vector DB ================= */
+(function(){
+ const svg=$("#vdbSvg");
+ const C=[{n:"Animal policies",x:80,y:75},{n:"Health benefits",x:220,y:60},{n:"Remote work",x:355,y:80},{n:"Travel",x:115,y:195},{n:"Money & claims",x:305,y:195}];
+ let seed=11;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;};
+ const pts=[];C.forEach((c,ci)=>{for(let i=0;i<16;i++){const a=rnd()*Math.PI*2,r=9+rnd()*30;pts.push({x:c.x+Math.cos(a)*r,y:c.y+Math.sin(a)*r*0.85,c:ci});}});
+ const Q={x:96,y:90};
+ let s="";C.forEach((c,i)=>{s+='<circle class="cen" data-c="'+i+'" cx="'+c.x+'" cy="'+c.y+'" r="44"/><text x="'+c.x+'" y="'+(c.y-50)+'" font-size="10.5" text-anchor="middle" fill="var(--muted)" font-weight="700">'+c.n+"</text>";});
+ pts.forEach((p,i)=>{s+='<circle class="pt" data-i="'+i+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="4.2"/>';});
+ s+='<path d="M'+Q.x+" "+(Q.y-8)+" L"+(Q.x+8)+" "+Q.y+" L"+Q.x+" "+(Q.y+8)+" L"+(Q.x-8)+" "+Q.y+' Z" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>';
+ svg.innerHTML=s;
+ const ptEls=$$(".pt",svg),cenEls=$$(".cen",svg);let busy=false;const cnt=$("#vdbCount");
+ function reset(){ptEls.forEach(e=>e.setAttribute("class","pt"));cenEls.forEach(e=>e.setAttribute("class","cen"));}
+ function show(n,extra){cnt.innerHTML="Comparisons: <b>"+n+"</b>"+(extra?" <span class=\"muted\">"+extra+"</span>":"");}
+ function nearest(idxs){return idxs.slice().sort((a,b)=>Math.hypot(pts[a].x-Q.x,pts[a].y-Q.y)-Math.hypot(pts[b].x-Q.x,pts[b].y-Q.y)).slice(0,3);}
+ async function brute(){if(busy)return;busy=true;reset();let n=0;
+  for(let i=0;i<pts.length;i++){ptEls[i].setAttribute("class","pt probe");n++;show(n);await wait(14);ptEls[i].setAttribute("class","pt checked");}
+  nearest(pts.map((_,i)=>i)).forEach(i=>ptEls[i].setAttribute("class","pt hit"));show(n,"· checked all "+pts.length+" vectors");busy=false;}
+ async function idx(){if(busy)return;busy=true;reset();let n=0,best=0,bd=1e9;
+  for(let c=0;c<C.length;c++){cenEls[c].setAttribute("class","cen probe");n++;show(n,"· comparing with neighbourhood centres");await wait(220);const d=Math.hypot(C[c].x-Q.x,C[c].y-Q.y);if(d<bd){bd=d;best=c;}cenEls[c].setAttribute("class","cen");}
+  cenEls[best].setAttribute("class","cen win");const mine=pts.map((p,i)=>i).filter(i=>pts[i].c===best);
+  for(const i of mine){ptEls[i].setAttribute("class","pt probe");n++;show(n,"· searching only “"+C[best].n+"”");await wait(40);ptEls[i].setAttribute("class","pt checked");}
+  nearest(mine).forEach(i=>ptEls[i].setAttribute("class","pt hit"));show(n,"· "+C.length+" centres + "+mine.length+" vectors, instead of "+pts.length);busy=false;}
+ $("#vdbBrute").addEventListener("click",brute);$("#vdbIdx").addEventListener("click",idx);
+ function math(){const N=+$("#vdbN").value,D=+$("#vdbD").value;const m=N*D;
+  $("#vdbMath").innerHTML=N.toLocaleString()+" chunks × "+D+" numbers = <b>"+m.toLocaleString()+" multiplications</b> for <em>every</em> question with brute force. An HNSW index typically visits only a few hundred to a few thousand vectors instead of all "+N.toLocaleString()+".";}
+ $("#vdbN").addEventListener("change",math);$("#vdbD").addEventListener("change",math);math();
+})();
+
+/* ================= Part 8: chunking ================= */
+(function(){
+ const TXT="Remote Work Policy\nEmployees may work from home up to three days a week. Fully remote arrangements need director approval.\n\nInternet Requirements\nRemote employees need an internet connection of at least 50 Mbps. TechCorp reimburses up to $40 per month for broadband.\n\nHome Office Setup\nEmployees can claim up to $500 for a chair, monitor and other equipment. Submit receipts within 30 days of purchase.\n\nPet Policy\nDogs are allowed in the office on Fridays. Pets must be vaccinated and stay in the pet-friendly zone.\n\nSick Leave\nFull-time employees get 12 sick days per year. Unused sick days do not carry over.";
+ const ta=$("#chText");ta.value=TXT;
+ const mode=$("#chMode"),size=$("#chSize"),ov=$("#chOv");
+ function sentences(text){return text.split(/\n+/).reduce((a,line)=>a.concat(line.match(/[^.!?]+[.!?]*/g)||[]),[]).map(s=>s.trim()).filter(Boolean);}
+ const isW=ch=>!!ch&&/[A-Za-z0-9]/.test(ch);
+ function chunk(text,m,sz,o){
+  if(m==="none")return [{t:text,ov:0}];
+  if(m==="paragraph")return text.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean).map(t=>({t,ov:0}));
+  if(m==="sentence")return sentences(text).map(t=>({t,ov:0}));
+  if(m==="fixed"){const out=[];const step=Math.max(1,sz-o);for(let st=0;st<text.length;st+=step){const en=Math.min(st+sz,text.length);out.push({t:text.slice(st,en),ov:st===0?0:Math.min(o,en-st),cut:en<text.length&&isW(text[en-1])&&isW(text[en])});if(en===text.length)break;}return out;}
+  const units=[];sentences(text).forEach(s=>{if(s.length<=sz)units.push(s);else for(let i=0;i<s.length;i+=sz)units.push(s.slice(i,i+sz));});
+  const out=[];let cur=[],ovc=0;const len=a=>a.join(" ").length;
+  units.forEach(u=>{if(cur.length&&len(cur.concat([u]))>sz){out.push({u:cur.slice(),k:ovc});let tail=[];for(let i=cur.length-1;i>=0;i--){if(len([cur[i]].concat(tail))<=o)tail.unshift(cur[i]);else break;}if(len(tail.concat([u]))>sz)tail=[];cur=tail.slice();ovc=tail.length;}cur.push(u);});
+  if(cur.length)out.push({u:cur,k:ovc});
+  return out.map(c=>({t:c.u.join(" "),ov:c.k?c.u.slice(0,c.k).join(" ").length+(c.k<c.u.length?1:0):0}));
+ }
+ function score(t,q){const qt=Array.from(new Set(toks(q)));const tt=toks(t);let s=0;qt.forEach(w=>{const f=tt.filter(x=>x===w||x.replace(/s$/,"")===w.replace(/s$/,"")).length;if(f)s+=1+Math.log(f);});return s;}
+ function run(){
+  const m=mode.value,sz=+size.value,o=Math.min(+ov.value,sz-10);$("#chSizeV").textContent=sz;$("#chOvV").textContent=o;
+  const usesSize=m==="fixed"||m==="recursive";size.disabled=!usesSize;ov.disabled=!usesSize;
+  const text=ta.value;const ch=chunk(text,m,sz,o);const q=$("#chQ").value;
+  let best=-1,bs=0;ch.forEach((c,i)=>{const s=score(c.t,q)/Math.sqrt(Math.max(c.t.length,40)/100);if(s>bs){bs=s;best=i;}});
+  $("#chOut").innerHTML=ch.map((c,i)=>{const a=esc(c.t.slice(0,c.ov)),b=esc(c.t.slice(c.ov));return '<div class="chunk '+(i===best?"best":"")+'"><div class="meta"><span>Chunk '+(i+1)+" · "+c.t.length+" chars</span>"+(i===best?'<span class="pill r">retrieved</span>':"")+(c.cut?'<span class="pill bad">cut mid-word</span>':"")+"</div><p>"+(a?'<span class="ov">'+a+"</span>":"")+b+"</p></div>";}).join("");
+  const stats=$("#chStats");const avg=Math.round(ch.reduce((s,c)=>s+c.t.length,0)/ch.length);const cuts=ch.filter(c=>c.cut).length;
+  if(best<0){stats.className="verdict bad";stats.innerHTML="No chunk matches the question's words. ("+ch.length+" chunks, average "+avg+" characters.)";}
+  else{const sent=ch[best].t.length;const pct=Math.round(sent/text.length*100);
+   stats.className="verdict "+(m==="none"||pct>60?"bad":cuts?"warn":"ok");
+   stats.innerHTML="<b>"+ch.length+" chunk"+(ch.length>1?"s":"")+"</b>, average "+avg+" characters. For this question the retriever sends <b>"+sent+" characters</b> to the LLM ("+pct+"% of the handbook)."+(m==="none"?" Without chunking the LLM gets the whole document: the precision problem.":"")+(cuts?" "+cuts+" chunk"+(cuts>1?"s end":" ends")+" in the middle of a word. Overlap or a sentence-aware splitter helps.":"");}
+ }
+ [mode,size,ov].forEach(e=>e.addEventListener("input",run));$("#chQ").addEventListener("input",run);ta.addEventListener("input",run);
+ run();
+})();
+
+/* ================= Part 9: pipeline ================= */
+(function(){
+ const chips=["What's the reimbursement policy for home office setup?","How many sick days do I get per year?","Can I work from home permanently?","When are performance reviews conducted?","Can I bring my puppy?","What internet speed do I need?","Can we discuss my salary raise?","What's the gym membership discount?"];
+ $("#pChips").innerHTML=chips.map(c=>'<button type="button" class="chip">'+esc(c)+"</button>").join("");
+ $("#pChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){$("#pQ").value=b.textContent;run();}});
+ $("#pGo").addEventListener("click",run);$("#pQ").addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+ const nodes=$$(".pnode");const on=k=>nodes.forEach(n=>n.classList.toggle("on",n.dataset.p===k));
+ let token=0;
+ async function run(){
+  const my=++token;const q=$("#pQ").value.trim();if(!q)return;const out=$("#pOut");out.innerHTML="";
+  const add=(cls,title,html)=>{const d=document.createElement("div");d.className="pstage "+cls;d.innerHTML="<h4>"+title+"</h4>"+html;out.appendChild(d);};
+  on("q");await wait(250);if(my!==token)return;
+  const {qv,rows}=semRank(q);on("e");
+  add("","Embed the question",qv?'<div class="qvec" style="height:56px">'+DIMS.map((d,i)=>'<div><i style="height:'+Math.max(2,qv[i]*40)+'px"></i><span>'+DIM_LABEL[d]+"</span></div>").join("")+'</div><p class="small muted">['+qv.map(x=>x.toFixed(2)).join(", ")+"] · a real model would output 384 numbers</p>":'<p class="small">The toy model recognises none of these words, so the vector is empty.</p>');
+  await wait(450);if(my!==token)return;on("r");
+  const top=rows.slice(0,3);
+  add("r","Retrieve top 3 chunks",'<div class="rank">'+top.map((r,i)=>'<div class="rank-row '+(i===0?"top":"")+'"><span class="nm">'+esc(r.doc.file)+'</span><div class="bar r"><i style="width:'+(r.score*100)+'%"></i></div><span class="v">'+r.score.toFixed(3)+"</span></div>").join("")+"</div>");
+  await wait(450);if(my!==token)return;on("a");
+  const prompt='<span class="pr">SYSTEM RULES\nYou are TechCorp\'s Policy Copilot.\nAnswer ONLY from the CONTEXT. If the answer is not there, say you don\'t know.\nNever discuss salaries or performance-review appeals. Send those questions to HR.\nCite the source file.</span>\n\n<span class="pc">CONTEXT\n'+top.map((r,i)=>"["+(i+1)+"] "+esc(r.doc.file)+": "+esc(r.doc.text)).join("\n")+'</span>\n\n<span class="pq">QUESTION\n'+esc(q)+"</span>";
+  add("a","Augment: the prompt actually sent to the LLM",'<div class="promptbox">'+prompt+"</div>");
+  await wait(500);if(my!==token)return;on("g");
+  const voice=$("#pVoice").checked;let ans,src="";
+  if(/salar|raise|pay rise|appeal|compensation/i.test(q)){ans="That's a conversation for HR, so I can't help with it here. Please contact your HR partner directly.";src="Rule from the system prompt (prompt engineering), not from retrieval.";}
+  else if(!qv||top[0].score<0.45){ans="I couldn't find that in TechCorp's policy documents, so I won't guess. Try rephrasing, or ask HR.";src="Top similarity was "+(qv?top[0].score.toFixed(2):"0")+", below the 0.45 confidence cut-off. Saying “I don't know” instead of hallucinating is a prompt rule.";}
+  else{ans=top[0].doc.text;src="Source: "+top[0].doc.file;}
+  if(voice)ans="Aye, here's the short of it. "+ans+" Simple as that.";
+  add("g","Generate",'<div class="final">'+esc(ans)+'<br><span class="small muted">'+esc(src)+"</span></div>");
+ }
+ run();
+})();
+
+/* ================= Part 10: cache ================= */
+(function(){
+ const chips=["What's the remote work policy?","what's the remote work policy","Can I work from home?","How many sick days do I get?","What internet speed do I need?"];
+ $("#cChips").innerHTML=chips.map(c=>'<button type="button" class="chip">'+esc(c)+"</button>").join("");
+ $("#cChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){$("#cQ").value=b.textContent;ask();}});
+ let clock=0,cache=[],stats={q:0,h:0,saved:0,total:0};const TTL=60;
+ const normQ=q=>q.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
+ function fnv(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return ("00000000"+h.toString(16)).slice(-8);}
+ function purge(){const before=cache.length;cache=cache.filter(e=>clock-e.t<TTL);return before-cache.length;}
+ function ask(){
+  const q=$("#cQ").value.trim();if(!q)return;purge();const n=normQ(q),key="rag:"+fnv(n);stats.q++;
+  let hit=cache.find(e=>e.key===key),how="exact";
+  if(!hit&&$("#cSem").checked){const v=embed(q);if(v){let best=null,bs=0;cache.forEach(e=>{if(e.v){const s=cos(v,e.v);if(s>bs){bs=s;best=e;}}});if(best&&bs>=0.9){hit=best;how="semantic (similarity "+bs.toFixed(2)+")";}}}
+  const r=$("#cRes");
+  if(hit){stats.h++;stats.saved+=945;stats.total+=5;hit.hits++;
+   r.innerHTML='<div class="cache-res"><div><span class="pill ok">Cache HIT · '+esc(how)+'</span><p class="small" style="margin-top:6px">Returned the stored answer for “'+esc(hit.q)+'”.</p><div class="lat" style="margin-top:6px;width:100%"><i style="width:0.6%;background:var(--ok)"></i></div></div><div class="big" style="color:var(--ok)">5 ms</div></div>';}
+  else{stats.total+=950;cache.push({q,key,t:clock,v:embed(q),hits:0});
+   r.innerHTML='<div class="cache-res"><div><span class="pill bad">Cache MISS</span><p class="small" style="margin-top:6px">Ran the full pipeline, then stored the answer under <code>'+key+'</code>.</p><div class="lat" style="margin-top:6px"><i style="width:6.3%;background:var(--muted)" title="embed 60 ms"></i><i style="width:9.5%;background:var(--r)" title="vector search 90 ms"></i><i style="width:84.2%;background:var(--accent)" title="LLM 800 ms"></i></div><div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--muted)"></i>embed 60</span><span><i class="sw" style="background:var(--r)"></i>search 90</span><span><i class="sw" style="background:var(--accent)"></i>LLM 800</span></div></div><div class="big">950 ms</div></div>';}
+  render();
+ }
+ function render(){
+  $("#cStats").innerHTML='<div class="stat"><b>'+stats.q+'</b><span>questions</span></div><div class="stat"><b>'+(stats.q?Math.round(stats.h/stats.q*100):0)+'%</b><span>hit rate</span></div><div class="stat"><b>'+(stats.q?Math.round(stats.total/stats.q):0)+' ms</b><span>average response</span></div><div class="stat"><b>'+(stats.saved/1000).toFixed(2)+' s</b><span>time saved</span></div>';
+  $("#cTable").innerHTML=cache.length?'<thead><tr><th>Key</th><th>Cached question</th><th class="num">Hits</th><th class="num">Expires in</th></tr></thead><tbody>'+cache.map(e=>'<tr><td><code>'+e.key+"</code></td><td>"+esc(e.q)+'</td><td class="num">'+e.hits+'</td><td class="num">'+(TTL-(clock-e.t))+" min</td></tr>").join("")+"</tbody>":'<tbody><tr><td class="muted">Cache is empty. Ask a question to fill it.</td></tr></tbody>';
+ }
+ $("#cGo").addEventListener("click",ask);$("#cQ").addEventListener("keydown",e=>{if(e.key==="Enter")ask();});
+ $("#cFF").addEventListener("click",()=>{clock+=30;const gone=purge();$("#cRes").innerHTML='<div class="verdict '+(gone?"warn":"ok")+'">Clock moved forward 30 minutes.'+(gone?" "+gone+" entr"+(gone>1?"ies":"y")+" reached the 60-minute TTL and "+(gone>1?"were":"was")+" deleted. The next identical question will be a miss and fetch a fresh answer.":"")+"</div>";render();});
+ $("#cClr").addEventListener("click",()=>{cache=[];stats={q:0,h:0,saved:0,total:0};$("#cRes").innerHTML="";render();});
+ render();
+})();
+
+/* ================= Part 11: monitoring ================= */
+(function(){
+ const L=$("#mLat"),E=$("#mErr"),R=$("#mRel");
+ function run(){const l=+L.value,e=+E.value,r=+R.value;$("#mLatV").textContent=l.toFixed(1)+" s";$("#mErrV").textContent=e.toFixed(1)+"%";$("#mRelV").textContent=r.toFixed(2);
+  const row=(n,v,ok,msg)=>'<div class="mrow"><span>'+n+" <b>"+v+'</b></span><span class="pill '+(ok?"ok":"bad")+'">'+(ok?"OK":msg)+"</span></div>";
+  const bad=(l>2)+(e>5)+(r<0.5);
+  $("#mOut").innerHTML=row("Response time",l.toFixed(1)+" s",l<=2,"ALERT: above 2 s")+row("Error rate",e.toFixed(1)+"%",e<=5,"ALERT: above 5%")+row("Retrieval relevance",r.toFixed(2),r>=0.5,"ALERT: below 0.5")+'<p class="small" style="margin-top:8px">'+(bad?"<b>"+bad+" alert"+(bad>1?"s":"")+" firing.</b> "+(l>2?"Check the LLM and vector DB latency, and the cache hit rate. ":"")+(e>5?"Something is failing: look at logs and traces. ":"")+(r<0.5?"Retrieved chunks don't match questions well: revisit chunking or the embedding model.":""):"All metrics within thresholds.")+"</p>";}
+ [L,E,R].forEach(x=>x.addEventListener("input",run));run();
+})();
+
+/* ================= Part 12: fallbacks + circuit breaker ================= */
+(function(){
+ const deps=[["embed","Embedding service"],["vdb","Vector database"],["llm","LLM API"],["kw","Keyword (BM25) index"],["mem","In-memory copy of policy text"]];
+ const up={embed:true,vdb:true,llm:true,kw:true,mem:true};
+ const tiers=[
+  ["Full RAG pipeline",["embed","vdb","llm"],"A full answer written by the LLM from the retrieved chunks, with a citation."],
+  ["Keyword search + LLM",["kw","llm"],"An LLM answer built on BM25 results. Works, but may miss synonyms."],
+  ["Return retrieved chunks directly",["embed","vdb"],"The matching policy text itself, without an LLM summary."],
+  ["Simple text matching",["mem"],"Lines from the policies that contain the exact words of the question."],
+  ["Helpful error message",[],"“The policy assistant is unavailable right now. Please try again shortly or contact HR.”"]
+ ];
+ $("#fToggles").innerHTML='<p class="small muted">Untick a service to take it down:</p>'+deps.map(d=>'<label class="tog"><input type="checkbox" checked data-d="'+d[0]+'"> '+d[1]+"</label>").join("");
+ $("#fToggles").addEventListener("change",e=>{const c=e.target.closest("input");if(c){up[c.dataset.d]=c.checked;run();}});
+ function run(){let live=-1;tiers.forEach((t,i)=>{if(live<0&&t[1].every(d=>up[d]))live=i;});
+  $("#fTiers").innerHTML=tiers.map((t,i)=>{const ok=t[1].every(d=>up[d]);return '<div class="tier '+(i===live?"live":ok?"":"down")+'"><span>'+(i+1)+". "+t[0]+'</span><span class="pill '+(i===live?"ok":ok?"g":"bad")+'">'+(i===live?"serving":ok?"standby":"down")+"</span></div>";}).join("");
+  const o=$("#fOut");o.className="verdict "+(live===0?"ok":live===4?"bad":"warn");o.innerHTML="<b>User gets:</b> "+tiers[live][2];}
+ run();
+ let state="closed",fails=0;const log=[];const TH=3;
+ function L(m){log.unshift(m);if(log.length>7)log.pop();}
+ function render(){$$(".cbs").forEach(x=>x.classList.toggle("on",x.dataset.s===state));
+  $("#cbInfo").textContent=state==="closed"?"Normal. Failures in a row: "+fails+" of "+TH+" allowed before the circuit opens.":state==="open"?"Calls are blocked. Users get the fallback instantly instead of waiting for a dead service.":"Testing: the next request is a trial. Success closes the circuit, failure opens it again.";
+  $("#cbLog").innerHTML=log.length?log.map(esc).join("<br>"):'<span class="muted">Event log appears here.</span>';}
+ $("#cbOk").addEventListener("click",()=>{if(state==="open"){L("Request blocked (circuit open) → fallback answer served.");}else if(state==="half"){state="closed";fails=0;L("Trial request succeeded → circuit CLOSED. Normal operation resumes.");}else{fails=0;L("Request succeeded. Failure counter reset.");}render();});
+ $("#cbFail").addEventListener("click",()=>{if(state==="open"){L("Request blocked (circuit open) → fallback answer served.");}else if(state==="half"){state="open";L("Trial request failed → circuit OPEN again.");}else{fails++;L("Request failed ("+fails+"/"+TH+").");if(fails>=TH){state="open";L("Too many failures → circuit OPEN.");}}render();});
+ $("#cbWait").addEventListener("click",()=>{if(state==="open"){state="half";L("Cool-down over → HALF-OPEN. Allowing a trial request.");}else L("Timer only matters while the circuit is open.");render();});
+ render();
+})();
+
+/* ================= Part 13: architecture ================= */
+(function(){
+ const A={
+  app:[["Web UI","The chat interface employees use in the browser."],["Mobile app backend","API that serves the mobile app, if there is one."],["Admin interface","Where admins upload or update policy documents and view usage."]],
+  pipe:[["Query processing","Cleans the question, checks the cache, detects off-limits topics."],["Chunking","Splits new or updated documents into chunks (runs during ingestion)."],["Embedding","Turns chunks and questions into vectors. Often the busiest service."],["Retrieval","Runs the similarity search against the vector DB and returns top-k chunks."],["Augmentation","Builds the prompt: rules + retrieved chunks + question."],["Generation","Calls the LLM and streams the answer back. Scaled up the most because LLM calls are slow."]],
+  data:[["ChromaDB","Vector database: stores chunk embeddings and searches them."],["Redis","In-memory cache for answers, embeddings and search results, with TTL."],["PostgreSQL","Relational database for metadata: document versions, users, chat history, feedback."]],
+  mon:[["Prometheus","Collects metrics such as latency, error rate and throughput over time."],["Grafana","Dashboards and alerts built on Prometheus metrics."],["Jaeger","Distributed tracing: follows one request through every microservice to find where time is spent."],["ELK stack","Elasticsearch, Logstash, Kibana: collects, stores and searches logs."]]
+ };
+ const info=$("#archInfo");
+ Object.keys(A).forEach(k=>{$('.comps[data-layer="'+k+'"]').innerHTML=A[k].map((c,i)=>'<button type="button" class="comp" data-k="'+k+'" data-i="'+i+'">'+c[0]+"</button>").join("");});
+ function pick(k,i){$$(".comp").forEach(b=>b.classList.toggle("sel",b.dataset.k===k&&+b.dataset.i===i));const c=A[k][i];info.innerHTML="<b>"+c[0]+"</b><p class=\"small\">"+c[1]+"</p>";}
+ document.querySelector(".arch").addEventListener("click",e=>{const b=e.target.closest(".comp");if(b)pick(b.dataset.k,+b.dataset.i);});
+ pick("pipe",5);
+})();
+
+/* ================= Interview filter ================= */
+(function(){
+ const items=$$("#qaList details.qa");const topics=["All"].concat(Array.from(new Set(items.map(d=>d.dataset.t))));let cur="All";
+ $("#qaTopics").innerHTML=topics.map(t=>'<button type="button" class="chip" data-t="'+t+'">'+t+"</button>").join("");
+ function apply(){const q=$("#qaSearch").value.toLowerCase();items.forEach(d=>{const ok=(cur==="All"||d.dataset.t===cur)&&(!q||d.textContent.toLowerCase().indexOf(q)>-1);d.hidden=!ok;});
+  $$("#qaTopics .chip").forEach(c=>{const on=c.dataset.t===cur;c.style.background=on?"var(--ink)":"";c.style.color=on?"var(--paper)":"";});}
+ $("#qaTopics").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){cur=b.dataset.t;apply();}});
+ $("#qaSearch").addEventListener("input",apply);
+ let open=false;$("#qaAll").addEventListener("click",()=>{open=!open;items.forEach(d=>{if(!d.hidden)d.open=open;});$("#qaAll").textContent=open?"Close all":"Open all";});
+ apply();
+})();
+
+/* ================= Quiz ================= */
+(function(){
+ const Q=[
+  ["What does the “Augment” step in RAG do?",["Retrains the model on new data","Adds the retrieved text to the prompt","Converts text into vectors","Stores documents in the database"],1,"Augmenting = improving the prompt by adding retrieved context next to the question."],
+  ["The Policy Copilot must sound like the Scottish CEO. Best technique?",["RAG","Prompt engineering alone","Fine-tuning","Chunking"],2,"A consistent voice learned from many examples is a stable pattern, which is what fine-tuning is for."],
+  ["Why is fine-tuning a poor way to teach changing policies?",["It can't learn text","Every change needs slow, costly retraining and gives no citations","It makes the model smaller","It only works with images"],1,"Policies change; retraining each time is slow and expensive, and answers can't be traced to a source."],
+  ["Keyword search for “allowance” misses a document that says “reimbursement” because…",["The document is too long","The exact word isn't in the document","BM25 is broken","The query has too many stop words"],1,"Keyword search matches exact words. Synonyms aren't matched: the vocabulary-mismatch problem."],
+  ["In BM25, a word that appears in every document gets…",["The highest weight","A weight of about zero","A negative score that excludes the document","Double weight"],1,"Its IDF is near zero: a word everywhere can't tell documents apart. That's why “office” scored 0 in the video."],
+  ["How many numbers does all-MiniLM-L6-v2 output per sentence?",["22","384","1536","175 billion"],1,"384 dimensions. (22 million is its parameter count; 1536 is OpenAI's text-embedding-3-small.)"],
+  ["Dot product of (1,5) and (2,4)?",["7","22","11","30"],1,"1×2 + 5×4 = 2 + 20 = 22."],
+  ["A cosine similarity of 0.96 means the two texts are…",["Opposite in meaning","Unrelated","Very similar in meaning","Identical character by character"],2,"Close to 1 means the vectors point the same way: very similar meaning."],
+  ["What makes a vector database fast?",["It stores less data","Indexing, so it compares only a small neighbourhood of vectors","It uses keyword search","It skips embeddings"],1,"Indexes like HNSW pre-organise vectors so each query checks a small fraction of them."],
+  ["The most widely used vector index, default in most vector DBs?",["LSH","IVF","HNSW","TF-IDF"],2,"Hierarchical Navigable Small World: a layered graph search, fast and accurate."],
+  ["You store data with chromadb.Client() and restart the program. The data is…",["Still there","Lost, because Client() is in-memory","Moved to Pinecone","Compressed"],1,"Use chromadb.PersistentClient(path=...) to keep data on disk."],
+  ["What is chunk overlap for?",["Making chunks bigger to save storage","Keeping context when a sentence is split across two chunks","Removing duplicate documents","Speeding up the LLM"],1,"Repeating the end of one chunk at the start of the next keeps split sentences intact somewhere."],
+  ["Chunks that are too large cause…",["Lost context","Poor precision: lots of irrelevant text is returned","Mid-word cuts","Faster search"],1,"Too small loses context; too large loses precision."],
+  ["Which steps happen BEFORE users start asking questions?",["Generate and augment","Chunk, embed and store","Retrieve and generate","Caching only"],1,"The offline phase (the video's RAG pipeline) prepares documents once: load, chunk, embed, store."],
+  ["Per the video, a cache hit vs a full RAG call takes about…",["5 s vs 950 s","5 ms vs 950 ms","50 ms vs 95 ms","Same time"],1,"About 5 milliseconds versus ~950 milliseconds: 190× faster."],
+  ["In a circuit breaker, the half-open state means…",["All requests are blocked forever","A few trial requests test whether the service has recovered","The service is half as fast","Errors are ignored"],1,"After the cool-down, trial requests go through. Success closes the circuit; failure opens it again."]
+ ];
+ const box=$("#qz");let ans=store.get("rag-notes-quiz",{});
+ function render(){
+  box.innerHTML=Q.map((q,i)=>{const a=ans[i];return '<div class="qq" data-i="'+i+'"><b>'+(i+1)+". "+esc(q[0])+'</b><div class="opts">'+q[1].map((o,j)=>{let c="";if(a!=null){if(j===q[2])c="right";else if(j===a)c="wrong";}return '<button type="button" data-j="'+j+'" class="'+c+'"'+(a!=null?" disabled":"")+">"+esc(o)+"</button>";}).join("")+"</div>"+(a!=null?'<p class="exp">'+(a===q[2]?"Correct. ":"Not quite. ")+esc(q[3])+"</p>":"")+"</div>";}).join("");
+  const n=Object.keys(ans).length,r=Object.keys(ans).filter(k=>ans[k]===Q[k][2]).length;
+  $("#qzScore").textContent="Score: "+r+" / "+n+" answered"+(n===Q.length?" · "+Math.round(r/Q.length*100)+"%":"");
+ }
+ box.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;const i=+b.closest(".qq").dataset.i;ans[i]=+b.dataset.j;store.set("rag-notes-quiz",ans);render();});
+ $("#qzReset").addEventListener("click",()=>{ans={};store.set("rag-notes-quiz",ans);render();});
+ render();
+})();
+
+/* ================= Glossary ================= */
+(function(){
+ const G=[
+  ["LLM","Large Language Model. An AI model trained on huge amounts of text to understand and generate language (GPT, Claude, Gemini)."],
+  ["Hallucination","When an LLM gives a confident answer that is false or invented."],
+  ["Context","Extra information placed in the prompt so the model can answer correctly."],
+  ["Prompt","The full text sent to the LLM: instructions, context and the question."],
+  ["Prompt engineering","Writing clear instructions in the prompt to control the model's behaviour."],
+  ["System prompt","Standing instructions given to the model for every conversation, like a rule book."],
+  ["Fine-tuning","Further training an existing model on many examples so it adopts a pattern or style."],
+  ["Knowledge cutoff","The date after which a model has no knowledge, because training data stopped there."],
+  ["Retrieval","Finding the relevant passages in your documents for a question."],
+  ["Augmentation","Adding the retrieved passages to the prompt."],
+  ["Generation","The LLM writing the answer from the augmented prompt."],
+  ["Keyword search","Search that matches the exact words of the query. Also called lexical search."],
+  ["grep","Linux command that searches files for lines containing a word or pattern."],
+  ["Stop words","Very common words (the, is, for) that search engines usually ignore."],
+  ["TF (term frequency)","How many times a word appears in a document."],
+  ["IDF (inverse document frequency)","How rare a word is across all documents. Rare words get higher weight."],
+  ["TF-IDF","A score combining TF and IDF to rank how important a word is to a document."],
+  ["BM25","Improved keyword ranking with term-frequency saturation and length normalisation. Default in Elasticsearch."],
+  ["Hybrid search","Combining keyword (BM25) and semantic scores."],
+  ["Semantic search","Search by meaning using embeddings, so synonyms still match."],
+  ["Embedding","A list of numbers that represents the meaning of a piece of text."],
+  ["Vector","An ordered list of numbers, e.g. (1, 5). Embeddings are vectors."],
+  ["Dimension","One position in a vector. all-MiniLM-L6-v2 vectors have 384 dimensions."],
+  ["Embedding model","A model that turns text into embeddings, e.g. all-MiniLM-L6-v2 or text-embedding-3-small."],
+  ["Parameter","One learned number inside a model. More parameters means more capacity."],
+  ["Hugging Face","Website and library hub for sharing ML models, datasets and demos."],
+  ["Sentence Transformers","Python library for sentence embedding models like all-MiniLM-L6-v2."],
+  ["NLP","Natural Language Processing: the field of AI that works with human language."],
+  ["Dot product","Multiply two vectors position by position and add the results."],
+  ["Normalisation","Scaling a vector to length 1 so only its direction matters."],
+  ["Cosine similarity","Dot product divided by both lengths. 1 = same direction, 0 = unrelated, −1 = opposite."],
+  ["NumPy","Python library for fast maths on arrays; np.dot computes dot products."],
+  ["Vector database","A database that stores vectors and finds the nearest ones quickly using an index."],
+  ["Index","A data structure built ahead of time so searches don't check everything."],
+  ["ANN","Approximate Nearest Neighbour: fast search that is almost always exact."],
+  ["HNSW","Hierarchical Navigable Small World: layered graph index; the default in most vector DBs."],
+  ["IVF","Inverted File index: clusters vectors and searches only the closest clusters."],
+  ["LSH","Locality-Sensitive Hashing: hashes similar vectors into the same bucket."],
+  ["ChromaDB","Open-source, Python-friendly vector database. Great for learning."],
+  ["Collection","A named group of vectors in Chroma, like a table in SQL."],
+  ["Metadata","Extra info stored with each chunk, such as source file or date."],
+  ["Pinecone","Managed cloud vector database, pay per use."],
+  ["Weaviate","Open-source vector database with a GraphQL API."],
+  ["Chunk","A small piece of a larger document that gets embedded and searched on its own."],
+  ["Chunk overlap","Characters repeated between neighbouring chunks to preserve context."],
+  ["LangChain","Framework for building LLM and RAG apps; provides text splitters, retrievers, chains."],
+  ["spaCy","NLP library; used for sentence-aware splitting."],
+  ["Top-k","How many of the most similar chunks are retrieved per question."],
+  ["Ingestion pipeline","Offline steps that prepare documents: load, chunk, embed, store."],
+  ["Cache","Fast storage of previous results so repeated work is skipped."],
+  ["Cache hit / miss","Hit: the answer was in the cache. Miss: it wasn't, so the full pipeline ran."],
+  ["TTL","Time To Live: how long a cache entry lasts before it is deleted."],
+  ["Redis","Very fast in-memory key-value store, widely used for caching."],
+  ["Hash","A function that turns any text into a short fixed string, used as a cache key."],
+  ["Latency","Time taken to answer one request (response time)."],
+  ["Throughput","How many requests are handled per second."],
+  ["Error rate","Percentage of requests that fail."],
+  ["Alert fatigue","Ignoring alerts because too many of them are false alarms."],
+  ["Graceful degradation","Continuing to work with reduced features when parts fail."],
+  ["Circuit breaker","Stops calling a failing service for a while; states closed, open, half-open."],
+  ["Kubernetes","Platform that runs, scales and heals containerised services."],
+  ["Microservice","A small independent service doing one job, scalable on its own."],
+  ["PostgreSQL","Popular open-source relational (SQL) database."],
+  ["Prometheus","Collects and stores metrics over time."],
+  ["Grafana","Builds dashboards and alerts from metrics."],
+  ["Jaeger","Distributed tracing: tracks one request across services."],
+  ["ELK stack","Elasticsearch, Logstash and Kibana for collecting and searching logs."],
+  ["Virtual environment","An isolated Python folder with its own packages (python -m venv venv)."],
+  ["uv","A very fast Python package and environment manager that replaces pip + venv."],
+  ["Reranking","Reordering retrieved candidates with a more accurate model before using them."]
+ ];
+ const gl=$("#gl");
+ function render(){const q=$("#glQ").value.toLowerCase();const items=G.filter(g=>!q||(g[0]+" "+g[1]).toLowerCase().indexOf(q)>-1);
+  gl.innerHTML=items.length?items.map(g=>'<div class="card"><b>'+esc(g[0])+'</b><p class="small">'+esc(g[1])+"</p></div>").join(""):'<p class="muted">No term matches “'+esc(q)+"”.</p>";}
+ $("#glQ").addEventListener("input",render);render();
+})();
+
+})();
+</script>
+
+</body></html>
