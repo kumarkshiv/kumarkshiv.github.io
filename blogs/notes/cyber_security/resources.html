@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED2 - Learn Every Damn Day</title>
+  <style>
+    /* Reset */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: #116466;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; }
+    header p { font-size: 1rem; }
+
+    /* Main */
+    main {
+      flex: 1;
+      max-width: 900px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+
+    section.intro {
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    section.index h2 {
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    .post {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .post h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .post h3 a {
+      color: #0073e6;
+      text-decoration: none;
+    }
+    .post h3 a:hover {
+      text-decoration: underline;
+    }
+    .post small {
+      display: block;
+      color: #666;
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+    }
+    .post p {
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      background: #116466;
+      color: #bbb;
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: #bbb;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsiveness */
+    @media (max-width: 768px) {
+      header h1 { font-size: 1.6rem; }
+      header p { font-size: 0.9rem; }
+      .post { padding: 0.8rem; }
+    }
+
+    @media (max-width: 480px) {
+      header h1 { font-size: 1.3rem; }
+      header p { font-size: 0.8rem; }
+      main { padding: 0 0.5rem; }
+      .post h3 { font-size: 1rem; }
+      .post p { font-size: 0.9rem; }
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        font-family: system-ui, sans-serif;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px 14px;
+        text-align: left;
+    }
+    thead th {
+        background: #1f2937;
+        color: #fff;
+    }
+    tbody tr:nth-child(even) {
+        background: #f5f7fa;
+    }
+    tbody tr:hover {
+        background: #e8eefc;
+    }
+    a {
+        color: #2563eb;
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LED<sup>2</sup></h1>
+    <p>Learn Every Damn Day</p>
+	<nav>
+      <a href="../index.html">Home</a>
+      <a href="../../../index.html">Profile</a>
+      <!--<a href="../about.html">About</a>-->
+    </nav>
+  </header>
+
+  <main>
+    <section class="intro">
+      <!--<p>Welcome to LED<sup>2</sup> — where I share something new I learn every day completely with the help of AI.</p>-->
+	  <p>Welcome to LED<sup>2</sup> — where I share my notes about every thing I learn.</p>
+      <!--<p><a href="#post-1">👉 Start Here</a></p>-->
+    </section>
+
+    <section class="index">
+      <h2>Notes</h2>
+		
+		
+      <div class="post" id="post-1">
+        <h3><a href="posts/post1.html">Free resources by different organizations:</a></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Bandit Wargames, Linux and command-line basics (OverTheWire)</td>
+                        <td><a href="https://overthewire.org/wargames/bandit/">https://overthewire.org/wargames/bandit/</a></td>
+                    </tr>
+                    <tr>
+                        <td>Natas Wargames, Basics of serverside web-security (OverTheWire)</td>
+                        <td><a href="https://overthewire.org/wargames/natas/">https://overthewire.org/wargames/natas/</a></td>
+                    </tr>
+                    <tr>
+                        <td>Introduction to Cybersecurity (Cisco)</td>
+                        <td><a href="https://www.netacad.com/courses/introduction-to-cybersecurity?courseLang=en-US">https://www.netacad.com/courses/introduction-to-cybersecurity?courseLang=en-US</a></td>
+                    </tr>
+                    <tr>
+                        <td>Security 101 (Microsoft)</td>
+                        <td><a href="https://microsoft.github.io/Security-101/#/">https://microsoft.github.io/Security-101/#/</a></td>
+                    </tr>
+                    <tr>
+                        <td>Cyber Security CTF: Capture The Flag (GitHub - paulveillard)</td>
+                        <td><a href="https://github.com/paulveillard/cybersecurity-ctf">https://github.com/paulveillard/cybersecurity-ctf</a></td>
+                    </tr>
+                    <tr>
+                        <td>How to Get Started With Cybersecurity (FreeCodeCamp)</td>
+                        <td><a href="https://www.freecodecamp.org/news/getting-started-in-cybersecurity/">https://www.freecodecamp.org/news/getting-started-in-cybersecurity/</a></td>
+                    </tr>
+                    <tr>
+                        <td>picoCTF, beginner-friendly CTF platform (Carnegie Mellon University)</td>
+                        <td><a href="https://picoctf.org">https://picoctf.org</a></td>
+                    </tr>
+                    <tr>
+                        <td>Web Security Academy, free web hacking labs (PortSwigger)</td>
+                        <td><a href="https://portswigger.net/web-security">https://portswigger.net/web-security</a></td>
+                    </tr>
+                    <tr>
+                        <td>Free modules on fundamentals and pentesting (Hack The Box Academy)</td>
+                        <td><a href="https://academy.hackthebox.com">https://academy.hackthebox.com</a></td>
+                    </tr>
+                    <tr>
+                        <td>OWASP Juice Shop, intentionally vulnerable web app to practice on (OWASP)</td>
+                        <td><a href="https://owasp.org/www-project-juice-shop/">https://owasp.org/www-project-juice-shop/</a></td>
+                    </tr>
+                    <tr>
+                        <td>Google Cybersecurity Certificate, free to audit (Coursera)</td>
+                        <td><a href="https://www.coursera.org/professional-certificates/google-cybersecurity">https://www.coursera.org/professional-certificates/google-cybersecurity</a></td>
+                    </tr>
+                    <tr>
+                        <td>Security+ video course, free (Professor Messer)</td>
+                        <td><a href="https://www.professormesser.com">https://www.professormesser.com</a></td>
+                    </tr>
+                    <!-- <tr><td>Test</td><td><a href="">Test</a></td></tr> -->
+                </tbody>
+            </table>
+      </div>
+
+
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 LED<sup>2</sup> | Learn Every Damn Day</p>
+    <p><a href="#">Subscribe</a> | <a href="#">About</a></p>
+  </footer>
+</body>
+</html>
