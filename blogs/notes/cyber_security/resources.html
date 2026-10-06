@@ -134,17 +134,51 @@
     a:hover {
         text-decoration: underline;
     }
+
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .main-nav {
+			margin-bottom: 30px;
+		}
+
+		.main-nav ul {
+			list-style: none;
+			display: flex;
+			justify-content: center;
+			gap: 30px;
+		}
+
+		.main-nav a {
+			color: white;
+			text-decoration: none;
+			font-weight: 500;
+			transition: opacity 0.3s;
+		}
+
+		.main-nav a:hover {
+			opacity: 0.8;
+		}
   </style>
 </head>
 <body>
   <header>
-    <h1>LED<sup>2</sup></h1>
-    <p>Learn Every Damn Day</p>
-	<nav>
-      <a href="../index.html">Home</a>
-      <a href="../../../index.html">Profile</a>
-      <!--<a href="../about.html">About</a>-->
-    </nav>
+    <h1>LED<sup>2</sup> (Learn Every Damn Day)</h1>
+    <!-- <p></p> -->
+	
+    <div class="container">
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../../../index.html">Home</a></li>
+                <li><a href="../index.html">Notes</a></li>
+            </ul>
+        </nav>
+        <!-- <h1>My Reading Journey</h1>
+        <p class="subtitle">Books I'm exploring and thoughts along the way</p> -->
+    </div>
   </header>
 
   <main>
