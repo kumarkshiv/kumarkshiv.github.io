@@ -1,0 +1,613 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>OSI Model Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout concept: one calm column. A clickable seven-layer stack beside a detail panel, then a step-through packet journey, then a quiz.
+   Each layer owns one color that follows it everywhere: stack, detail, packet headers, quiz. */
+:root{
+  --bg:#F2F5F9; --surface:#FFFFFF; --ink:#0F1726; --muted:#4A5568; --line:#D3DAE5; --soft:#E7ECF4;
+  --l1:#8E3B9E; --l2:#5B4BC4; --l3:#1D6FB8; --l4:#0F766E; --l5:#4D7C0F; --l6:#B45309; --l7:#B3261E;
+  --on-l:#FFFFFF; --focus:#1D6FB8; --good:#0F766E; --bad:#B3261E;
+  --font-head:'Space Grotesk',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C111D; --surface:#141B2B; --ink:#E9EDF5; --muted:#A5AFC2; --line:#27314A; --soft:#1C2539;
+    --l1:#D79BE6; --l2:#A89BFF; --l3:#6BB2F5; --l4:#4FD1C0; --l5:#A5D05F; --l6:#F5B35A; --l7:#FF8A7A;
+    --on-l:#0C111D; --focus:#8FC1FF; --good:#4FD1C0; --bad:#FF8A7A; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C111D; --surface:#141B2B; --ink:#E9EDF5; --muted:#A5AFC2; --line:#27314A; --soft:#1C2539;
+  --l1:#D79BE6; --l2:#A89BFF; --l3:#6BB2F5; --l4:#4FD1C0; --l5:#A5D05F; --l6:#F5B35A; --l7:#FF8A7A;
+  --on-l:#0C111D; --focus:#8FC1FF; --good:#4FD1C0; --bad:#FF8A7A; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;
+  padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:64px}
+h1,h2,h3,h4{font-family:var(--font-head);margin:0;text-wrap:balance;line-height:1.15}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:14px;max-width:760px}
+.kicker{font-family:var(--font-mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(2.1rem,6vw,3.5rem);font-weight:700;letter-spacing:-.01em}
+.lede{font-size:1.15rem;color:var(--muted);max-width:60ch}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.jump a{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:999px;font-size:14px;font-weight:500}
+.jump a:hover{border-color:var(--ink)}
+
+/* section heads */
+section{display:flex;flex-direction:column;gap:20px;min-width:0}
+h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700}
+.sub{color:var(--muted);max-width:62ch}
+
+/* mnemonic */
+.mnemo{display:flex;flex-direction:column;gap:12px}
+.toggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px;align-self:flex-start}
+.toggle button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:500;cursor:pointer;color:var(--muted)}
+.toggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.words{display:flex;flex-wrap:wrap;gap:8px}
+.word{display:flex;flex-direction:column;align-items:flex-start;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;min-width:92px}
+.word:hover{border-color:var(--ink)}
+.word .w{font-weight:600;font-size:17px}
+.word .w i{font-style:normal;color:var(--lc);font-family:var(--font-head);font-size:22px;font-weight:700}
+.word small{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* explore */
+.explore{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:8px}
+.layer{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px 10px 10px;cursor:pointer}
+.layer:hover{border-color:var(--ink)}
+.layer[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink);background:var(--soft)}
+.num{width:44px;height:44px;border-radius:9px;background:var(--lc);color:var(--on-l);display:grid;place-items:center;font-family:var(--font-head);font-weight:700;font-size:22px}
+.lname{font-weight:600}
+.lpdu{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-width:0}
+.dhead{background:var(--lc);color:var(--on-l);padding:18px 22px;display:flex;flex-direction:column;gap:4px}
+.dnum{font-family:var(--font-mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.dhead h3{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:700}
+.dbody{padding:22px;display:flex;flex-direction:column;gap:18px}
+.job{font-size:1.1rem;font-weight:500}
+.analogy{color:var(--muted)}
+.analogy b{color:var(--ink);font-weight:600;margin-right:6px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px 28px;margin:0}
+.facts div{min-width:0}
+.facts dt{font-family:var(--font-mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts dd{margin:0}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-family:var(--font-mono);font-size:13px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.tip{border-left:4px solid var(--lc);padding:4px 0 4px 14px;color:var(--ink)}
+
+/* demo */
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:20px;min-width:0}
+.msgrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.msgrow label{font-weight:600}
+.msgrow input{flex:1 1 220px;min-width:0;max-width:380px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:15px}
+.demo-body{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px}
+.mini{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mini li{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:9px;border:1px solid transparent;color:var(--muted);font-size:14px}
+.mini .n{width:28px;height:28px;border-radius:7px;background:var(--lc);color:var(--on-l);display:grid;place-items:center;font-family:var(--font-head);font-weight:700;opacity:.55}
+.mini li.on{border-color:var(--ink);color:var(--ink);font-weight:600;background:var(--soft)}
+.mini li.on .n{opacity:1}
+.demo-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side{font-family:var(--font-mono);font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.demo-main h3{font-size:1.4rem}
+.steptext{max-width:62ch}
+.frame{display:flex;flex-wrap:wrap;gap:8px;padding:16px;border:1px dashed var(--line);border-radius:12px;background:var(--bg);min-height:96px;align-items:stretch}
+.seg{background:var(--lc);color:var(--on-l);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
+.seg b{font-size:13px;font-weight:600}
+.seg span{font-family:var(--font-mono);font-size:12px;overflow-wrap:anywhere}
+.seg.eth,.seg.fcs{--lc:var(--l2)}
+.seg.ip{--lc:var(--l3)}
+.seg.tcp{--lc:var(--l4)}
+.seg.data{--lc:var(--l7)}
+.seg.enc{--lc:var(--l6)}
+.seg.hl{outline:3px solid var(--ink);outline-offset:3px}
+.seg.enter{animation:pop .5s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-12px) scale(.96)}to{opacity:1;transform:none}}
+.bits{font-family:var(--font-mono);font-size:clamp(14px,3.6vw,22px);letter-spacing:.04em;overflow-wrap:anywhere;color:var(--l1);font-weight:500}
+.bitcap{font-size:13px;color:var(--muted);margin-top:6px}
+.note{font-size:14px;color:var(--muted);min-height:1.5em}
+.demo-nav{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.progress{flex:1 1 160px;display:flex;flex-direction:column;gap:6px;min-width:140px}
+.progress small{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.bar{height:6px;background:var(--soft);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink);width:0;transition:width .3s}
+.btn{border:1px solid var(--ink);background:transparent;color:var(--ink);padding:8px 16px;border-radius:9px;font-weight:600;cursor:pointer;font-size:15px}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+
+/* quiz */
+.quiz{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.qmeta{font-family:var(--font-mono);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.qtext{font-family:var(--font-head);font-size:clamp(1.2rem,3vw,1.6rem);font-weight:500;line-height:1.3;max-width:50ch}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.choice{display:flex;align-items:center;gap:10px;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:500}
+.choice:hover:not(:disabled){border-color:var(--ink)}
+.choice .n{width:28px;height:28px;font-size:15px;border-radius:7px;flex:none}
+.choice:disabled{cursor:default}
+.choice.correct{border-color:var(--good);box-shadow:0 0 0 2px var(--good)}
+.choice.wrong{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad)}
+.feedback{min-height:3em;max-width:62ch}
+.feedback b.ok{color:var(--good)}
+.feedback b.no{color:var(--bad)}
+.result h3{font-size:1.6rem}
+.missed{margin:12px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+
+/* table */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:680px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:15px}
+th{font-family:var(--font-mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td .num{width:28px;height:28px;font-size:15px;border-radius:7px;display:inline-grid;vertical-align:middle;margin-right:8px}
+footer{font-size:14px;color:var(--muted);max-width:62ch}
+
+@media (max-width:900px){
+  .explore{grid-template-columns:minmax(0,1fr)}
+  .stack{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+}
+@media (max-width:720px){
+  .demo-body{grid-template-columns:minmax(0,1fr)}
+  .mini{flex-direction:row;flex-wrap:wrap}
+  .mini .t{display:none}
+  .mini li{padding:4px}
+  .wrap{gap:48px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Computer networks · 7 layers</p>
+    <h1>OSI Model Explorer</h1>
+    <p class="lede">Seven layers, one message. Open a layer to see what it does, follow a message down one computer and up another, then test yourself.</p>
+    <nav class="jump" aria-label="Sections">
+      <a href="#explore">The layers</a>
+      <a href="#send">Send a message</a>
+      <a href="#quiz">Quiz</a>
+      <a href="#glance">At a glance</a>
+    </nav>
+  </header>
+
+  <section id="explore" aria-labelledby="h-explore">
+    <div>
+      <h2 id="h-explore">The seven layers</h2>
+      <p class="sub">Layer 7 is closest to the user and layer 1 is the cable or radio wave. Select a layer, or use the up and down arrow keys.</p>
+    </div>
+    <div class="mnemo">
+      <div class="toggle" role="group" aria-label="Memory phrase direction">
+        <button id="mUp" type="button" aria-pressed="true">Layer 1 to 7</button>
+        <button id="mDown" type="button" aria-pressed="false">Layer 7 to 1</button>
+      </div>
+      <div class="words" id="words"></div>
+    </div>
+    <div class="explore">
+      <div class="stack" id="stack"></div>
+      <article class="detail" id="detail" aria-live="polite"></article>
+    </div>
+  </section>
+
+  <section id="send" aria-labelledby="h-send">
+    <div>
+      <h2 id="h-send">Send a message</h2>
+      <p class="sub">Each layer on the sending computer wraps your data in its own header. Each layer on the receiving computer unwraps it. Step through all 14 moments.</p>
+    </div>
+    <div class="demo">
+      <div class="msgrow">
+        <label for="msg">Message</label>
+        <input id="msg" type="text" value="GET /index.html" maxlength="36" autocomplete="off">
+      </div>
+      <div class="demo-body">
+        <ol class="mini" id="mini" aria-label="Layers in order"></ol>
+        <div class="demo-main">
+          <p class="side" id="side"></p>
+          <h3 id="stepTitle"></h3>
+          <p class="steptext" id="stepText"></p>
+          <div class="frame" id="frame" aria-live="polite"></div>
+          <p class="note" id="stepNote"></p>
+        </div>
+      </div>
+      <div class="demo-nav">
+        <div class="progress"><small id="stepCount"></small><div class="bar"><i id="barFill"></i></div></div>
+        <div class="btns">
+          <button class="btn" id="bBack" type="button">Back</button>
+          <button class="btn primary" id="bNext" type="button">Next</button>
+          <button class="btn" id="bPlay" type="button">Play</button>
+          <button class="btn" id="bReset" type="button">Reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quiz" aria-labelledby="h-quiz">
+    <div>
+      <h2 id="h-quiz">Which layer?</h2>
+      <p class="sub">Nine situations. Pick the layer each one belongs to.</p>
+    </div>
+    <div class="quiz" id="quizBox"></div>
+  </section>
+
+  <section id="glance" aria-labelledby="h-glance">
+    <div>
+      <h2 id="h-glance">At a glance</h2>
+      <p class="sub">The same facts in one table, for revision.</p>
+    </div>
+    <div class="scroll"><table id="glanceTable"></table></div>
+  </section>
+
+  <footer>
+    The OSI model is a teaching reference. Real networks use the four-layer TCP/IP model, which merges layers 5 to 7 into Application and layers 1 and 2 into Link. The addresses in the message demo are examples.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  };
+
+  var LAYERS = {
+    7: { name: 'Application', pdu: 'Data', pduShort: 'Data',
+      job: 'Gives programs access to the network: web pages, email, file transfer and name lookup.',
+      analogy: 'You decide what to write and who it is for.',
+      addr: 'Names and URLs, such as example.com',
+      protocols: ['HTTP', 'HTTPS', 'DNS', 'SMTP', 'FTP', 'SSH'],
+      devices: 'Hosts, proxies, application firewalls',
+      tcpip: 'Application',
+      tip: 'Your browser is not layer 7. HTTP, the protocol it speaks, is.' },
+    6: { name: 'Presentation', pdu: 'Data', pduShort: 'Data',
+      job: 'Translates, encrypts and compresses data so both ends read it the same way.',
+      analogy: 'You translate the letter into a shared language and seal it in an envelope.',
+      addr: 'None',
+      protocols: ['TLS/SSL', 'JPEG', 'MPEG', 'ASCII', 'Unicode'],
+      devices: 'None specific',
+      tcpip: 'Application',
+      tip: 'TLS is usually taught here, but it does not map cleanly onto one OSI layer.' },
+    5: { name: 'Session', pdu: 'Data', pduShort: 'Data',
+      job: 'Opens, manages and closes conversations between two hosts, with checkpoints so long transfers can resume.',
+      analogy: 'A phone call: dial, talk, hang up.',
+      addr: 'Session identifiers',
+      protocols: ['RPC', 'NetBIOS', 'SQL sessions'],
+      devices: 'None specific',
+      tcpip: 'Application',
+      tip: 'TCP/IP folds layers 5 to 7 into one, so many protocols cannot be pinned to a single one of them.' },
+    4: { name: 'Transport', pdu: 'Segment (TCP) or datagram (UDP)', pduShort: 'Segment',
+      job: 'Delivers data between programs. TCP adds ports, ordering, error recovery and flow control. UDP trades those for speed.',
+      analogy: 'You split a big shipment into numbered boxes with tracking and resend any that go missing.',
+      addr: 'Port numbers, such as 443 for HTTPS',
+      protocols: ['TCP', 'UDP'],
+      devices: 'Firewalls and load balancers that work on ports',
+      tcpip: 'Transport',
+      tip: 'IP gets data to the right host. The port gets it to the right program.' },
+    3: { name: 'Network', pdu: 'Packet', pduShort: 'Packet',
+      job: 'Gives hosts logical addresses and routes packets across different networks.',
+      analogy: 'The city and street address, plus the postal service choosing the route between cities.',
+      addr: 'IP address (logical)',
+      protocols: ['IPv4', 'IPv6', 'ICMP', 'OSPF', 'BGP'],
+      devices: 'Routers, layer 3 switches',
+      tcpip: 'Internet',
+      tip: 'Every router on the path reads the IP header and picks the next hop.' },
+    2: { name: 'Data Link', pdu: 'Frame', pduShort: 'Frame',
+      job: 'Moves frames between devices on the same local network, using MAC addresses, and detects errors.',
+      analogy: 'The local delivery van that knows every house number in the neighbourhood.',
+      addr: 'MAC address (physical)',
+      protocols: ['Ethernet', 'Wi-Fi (802.11)', 'PPP', 'VLAN tagging'],
+      devices: 'Switches, bridges, network cards, access points',
+      tcpip: 'Link',
+      tip: 'The MAC address changes at every hop. The IP address stays the same from end to end, unless NAT rewrites it.' },
+    1: { name: 'Physical', pdu: 'Bits', pduShort: 'Bits',
+      job: 'Sends raw bits as electrical, light or radio signals over a medium.',
+      analogy: 'The road and the trucks themselves.',
+      addr: 'None',
+      protocols: ['Ethernet cabling', 'Fibre', 'DSL', 'Radio'],
+      devices: 'Cables, hubs, repeaters, network cards',
+      tcpip: 'Link',
+      tip: 'There are no addresses and no meaning at this layer. It only moves signals.' }
+  };
+  var TOP = [7, 6, 5, 4, 3, 2, 1];
+
+  /* ---------- explore ---------- */
+  var current = 7;
+  var stackEl = $('#stack');
+  var detailEl = $('#detail');
+
+  function renderStack() {
+    stackEl.innerHTML = TOP.map(function (n) {
+      var L = LAYERS[n];
+      return '<button class="layer" type="button" data-n="' + n + '" aria-pressed="' + (n === current) + '" style="--lc:var(--l' + n + ')">' +
+        '<span class="num">' + n + '</span><span class="lname">' + L.name + '</span><span class="lpdu">' + esc(L.pduShort) + '</span></button>';
+    }).join('');
+  }
+
+  function renderDetail() {
+    var L = LAYERS[current];
+    var tags = function (arr) {
+      return '<div class="tags">' + arr.map(function (p) { return '<span class="tag">' + esc(p) + '</span>'; }).join('') + '</div>';
+    };
+    detailEl.innerHTML =
+      '<div class="dhead" style="--lc:var(--l' + current + ')"><span class="dnum">Layer ' + current + '</span><h3>' + L.name + '</h3></div>' +
+      '<div class="dbody" style="--lc:var(--l' + current + ')">' +
+      '<p class="job">' + esc(L.job) + '</p>' +
+      '<p class="analogy"><b>Courier analogy</b>' + esc(L.analogy) + '</p>' +
+      '<dl class="facts">' +
+      '<div><dt>Data unit</dt><dd>' + esc(L.pdu) + '</dd></div>' +
+      '<div><dt>Addressing</dt><dd>' + esc(L.addr) + '</dd></div>' +
+      '<div><dt>Example protocols</dt><dd>' + tags(L.protocols) + '</dd></div>' +
+      '<div><dt>Devices</dt><dd>' + esc(L.devices) + '</dd></div>' +
+      '<div><dt>In the TCP/IP model</dt><dd>' + esc(L.tcpip) + '</dd></div>' +
+      '</dl>' +
+      '<p class="tip">' + esc(L.tip) + '</p>' +
+      '</div>';
+  }
+
+  function selectLayer(n, fromHash) {
+    if (n === current && fromHash) return;
+    current = n;
+    renderStack();
+    renderDetail();
+    if (!fromHash) {
+      try { location.hash = 'layer-' + n; } catch (e) {}
+    }
+  }
+
+  stackEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.layer');
+    if (b) selectLayer(+b.getAttribute('data-n'));
+  });
+  stackEl.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    var i = TOP.indexOf(current) + (e.key === 'ArrowDown' ? 1 : -1);
+    if (i < 0 || i >= TOP.length) return;
+    selectLayer(TOP[i]);
+    var btn = stackEl.querySelector('[data-n="' + TOP[i] + '"]');
+    if (btn) btn.focus();
+  });
+
+  /* mnemonic */
+  var WORDS_UP = ['Please', 'Do', 'Not', 'Throw', 'Sausage', 'Pizza', 'Away'];
+  var WORDS_DOWN = ['All', 'People', 'Seem', 'To', 'Need', 'Data', 'Processing'];
+  var wordsEl = $('#words');
+  var mnemoUp = true;
+  function renderWords() {
+    var html = '';
+    for (var i = 0; i < 7; i++) {
+      var n = mnemoUp ? i + 1 : 7 - i;
+      var w = mnemoUp ? WORDS_UP[i] : WORDS_DOWN[i];
+      html += '<button class="word" type="button" data-n="' + n + '" style="--lc:var(--l' + n + ')">' +
+        '<span class="w"><i>' + w.charAt(0) + '</i>' + w.slice(1) + '</span><small>' + n + ' ' + LAYERS[n].name + '</small></button>';
+    }
+    wordsEl.innerHTML = html;
+    $('#mUp').setAttribute('aria-pressed', String(mnemoUp));
+    $('#mDown').setAttribute('aria-pressed', String(!mnemoUp));
+  }
+  $('#mUp').addEventListener('click', function () { mnemoUp = true; renderWords(); });
+  $('#mDown').addEventListener('click', function () { mnemoUp = false; renderWords(); });
+  wordsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.word');
+    if (b) selectLayer(+b.getAttribute('data-n'));
+  });
+
+  /* ---------- message demo ---------- */
+  var DEMO = {
+    7: { st: 'The application creates the message', rt: 'The application receives the message',
+      s: 'The program hands your message to the network as plain data.',
+      r: 'The program gets the original message and shows it. The journey is complete.' },
+    6: { st: 'Presentation encrypts the data', rt: 'Presentation decrypts the data',
+      s: 'The data is encoded and encrypted so both sides read it the same way and nobody in between can.',
+      r: 'The data is decrypted and decoded back into the original message.' },
+    5: { st: 'Session keeps the conversation open', rt: 'Session matches the conversation',
+      s: 'A session tracks this exchange between the two hosts. In practice layers 5 to 7 add no separate header you can see on the wire.',
+      r: 'The session is matched to the right conversation and the data moves up.' },
+    4: { st: 'Transport adds a TCP header', rt: 'Transport reads and removes the TCP header',
+      s: 'TCP splits the data into segments and adds a header with port numbers and a sequence number.',
+      r: 'TCP checks the sequence numbers, asks for resends if needed, and uses the port to pick the right program.' },
+    3: { st: 'Network adds an IP header', rt: 'Network reads and removes the IP header',
+      s: 'IP wraps the segment in a packet with the source and destination IP addresses.',
+      r: 'The destination IP address matches this host, so IP removes its header and passes the segment up.' },
+    2: { st: 'Data Link adds a frame header and trailer', rt: 'Data Link checks and removes the frame header and trailer',
+      s: 'Ethernet wraps the packet in a frame with source and destination MAC addresses, and a checksum (FCS) at the end.',
+      r: 'The network card checks the destination MAC address and the checksum, then removes the header and trailer.' },
+    1: { st: 'Physical sends bits', rt: 'Physical receives bits',
+      s: 'The frame becomes electrical, light or radio signals: ones and zeros on the medium.',
+      r: 'The signals arrive and are turned back into bits.' }
+  };
+  var ENTER = { 6: ['data'], 4: ['tcp'], 3: ['ip'], 2: ['eth', 'fcs'] };
+  var HL = { 7: ['data'], 6: ['data'], 5: ['data'], 4: ['tcp'], 3: ['ip'], 2: ['eth', 'fcs'] };
+
+  var step = 0;
+  var timer = null;
+  var TOTAL = 14;
+
+  function layerAt(s) { return s <= 6 ? 7 - s : s - 6; }
+  function scramble(msg) {
+    var out = [];
+    for (var i = 0; i < Math.min(msg.length, 8); i++) {
+      var h = ((msg.charCodeAt(i) ^ 0x5a) & 255).toString(16);
+      out.push(h.length < 2 ? '0' + h : h);
+    }
+    return out.join(' ') + (msg.length > 8 ? ' ...' : '');
+  }
+  function chipsFor(L, msg) {
+    var text = msg || '(empty)';
+    var data = L === 7 ? { k: 'data', label: 'Data', detail: text }
+      : { k: 'data enc', label: 'Data (encrypted)', detail: scramble(msg || ' ') };
+    var tcp = { k: 'tcp', label: 'TCP header', detail: 'port 52814 to 443, seq 1001' };
+    var ip = { k: 'ip', label: 'IP header', detail: '192.168.1.42 to 203.0.113.10' };
+    var eth = { k: 'eth', label: 'Ethernet header', detail: '3C:22:FB:10:2A:91 to 00:1A:2B:3C:4D:5E' };
+    var fcs = { k: 'fcs', label: 'FCS', detail: 'error check' };
+    var map = { 7: [data], 6: [data], 5: [data], 4: [tcp, data], 3: [ip, tcp, data], 2: [eth, ip, tcp, data, fcs] };
+    return map[L] || [];
+  }
+  function dataKey(c) { return c.k.split(' ')[0]; }
+
+  function renderDemo() {
+    var L = layerAt(step);
+    var sender = step <= 6;
+    var msg = $('#msg').value;
+    var d = DEMO[L];
+    $('#side').textContent = sender ? 'Sender · going down' : 'Receiver · going up';
+    $('#stepTitle').textContent = 'Layer ' + L + ' · ' + (sender ? d.st : d.rt);
+    $('#stepText').textContent = sender ? d.s : d.r;
+
+    $('#mini').innerHTML = TOP.map(function (n) {
+      return '<li class="' + (n === L ? 'on' : '') + '" style="--lc:var(--l' + n + ')" title="' + LAYERS[n].name + '"' + (n === L ? ' aria-current="step"' : '') + '>' +
+        '<span class="n">' + n + '</span><span class="t">' + LAYERS[n].name + '</span></li>';
+    }).join('');
+
+    var frame = $('#frame');
+    if (L === 1) {
+      frame.innerHTML = '<div><p class="bits">00000000 00011010 00101011 00111100 ...</p>' +
+        '<p class="bitcap">The first four bytes of the frame, the destination MAC address 00:1A:2B:3C, as bits. A real frame is thousands of bits long.</p></div>';
+    } else {
+      var hl = HL[L] || [];
+      var en = sender ? (ENTER[L] || []) : [];
+      frame.innerHTML = chipsFor(L, msg).map(function (c) {
+        var key = dataKey(c);
+        var cls = 'seg ' + c.k + (hl.indexOf(key) >= 0 ? ' hl' : '') + (en.indexOf(key) >= 0 ? ' enter' : '');
+        return '<div class="' + cls + '"><b>' + esc(c.label) + '</b><span>' + esc(c.detail) + '</span></div>';
+      }).join('');
+    }
+    $('#stepNote').textContent = L === 1
+      ? 'On the way, a switch opens the frame as far as layer 2 and a router as far as layer 3. Neither opens your data.'
+      : (HL[L] ? 'Outlined: the part this layer works with.' : '');
+
+    $('#stepCount').textContent = 'Step ' + (step + 1) + ' of ' + TOTAL;
+    $('#barFill').style.width = ((step + 1) / TOTAL * 100) + '%';
+    $('#bBack').disabled = step === 0;
+    $('#bNext').disabled = step === TOTAL - 1;
+    $('#bPlay').textContent = timer ? 'Pause' : 'Play';
+  }
+
+  function stopPlay() { if (timer) { clearInterval(timer); timer = null; } }
+  function go(s) { step = Math.max(0, Math.min(TOTAL - 1, s)); if (step === TOTAL - 1) stopPlay(); renderDemo(); }
+  $('#bNext').addEventListener('click', function () { stopPlay(); go(step + 1); });
+  $('#bBack').addEventListener('click', function () { stopPlay(); go(step - 1); });
+  $('#bReset').addEventListener('click', function () { stopPlay(); go(0); });
+  $('#bPlay').addEventListener('click', function () {
+    if (timer) { stopPlay(); renderDemo(); return; }
+    if (step === TOTAL - 1) step = 0;
+    timer = setInterval(function () { go(step + 1); }, 2400);
+    renderDemo();
+  });
+  $('#msg').addEventListener('input', renderDemo);
+
+  /* ---------- quiz ---------- */
+  var QUESTIONS = [
+    { q: 'A switch forwards a frame by looking at its destination MAC address.', a: 2, why: 'MAC addresses belong to the Data Link layer, and switches work there.' },
+    { q: 'A router picks the next hop for an IP packet.', a: 3, why: 'Routing between networks using IP addresses is the Network layer.' },
+    { q: 'TCP resends a segment that was lost on the way.', a: 4, why: 'Reliable delivery and error recovery are Transport layer jobs.' },
+    { q: 'A browser sends an HTTP GET request.', a: 7, why: 'HTTP is an Application layer protocol. DNS lookups live here too.' },
+    { q: 'A hub repeats electrical signals out of every port.', a: 1, why: 'A hub knows nothing about addresses. It only repeats signals, which is Physical.' },
+    { q: 'A port number decides which program receives the data.', a: 4, why: 'Ports identify the program at the Transport layer. The IP address only identifies the host.' },
+    { q: 'Data is encrypted with TLS before it is sent.', a: 6, why: 'Encryption is the classic Presentation layer job. In real stacks TLS sits between TCP and the application, so some courses say layer 5 or 7.' },
+    { q: 'The ping command sends ICMP echo requests to test if a host is reachable.', a: 3, why: 'ICMP travels inside IP packets, so it belongs to the Network layer.' },
+    { q: 'Two hosts open a dialogue, keep it alive with checkpoints, then close it.', a: 5, why: 'Managing a dialogue from start to finish is the Session layer.' }
+  ];
+  var order = [], qi = 0, score = 0, answered = false, missed = [];
+  var quizBox = $('#quizBox');
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function startQuiz() {
+    order = shuffle(QUESTIONS.map(function (_, i) { return i; }));
+    qi = 0; score = 0; missed = []; answered = false;
+    renderQuiz();
+  }
+  function renderQuiz() {
+    if (qi >= order.length) {
+      var msg = score === order.length ? 'Perfect score. You can place every one of these.'
+        : score >= 6 ? 'Solid. Review the ones below and try again.'
+        : 'Keep going. Open the layers above and try again.';
+      var list = missed.length
+        ? '<ul class="missed">' + missed.map(function (m) {
+          return '<li>' + esc(QUESTIONS[m].q) + ' Layer ' + QUESTIONS[m].a + ', ' + LAYERS[QUESTIONS[m].a].name + '.</li>';
+        }).join('') + '</ul>' : '';
+      quizBox.innerHTML = '<div class="result"><h3>You scored ' + score + ' of ' + order.length + '</h3><p class="sub">' + msg + '</p>' + list + '</div>' +
+        '<div><button class="btn primary" id="qAgain" type="button">Try again</button></div>';
+      $('#qAgain').addEventListener('click', startQuiz);
+      return;
+    }
+    var Q = QUESTIONS[order[qi]];
+    answered = false;
+    quizBox.innerHTML =
+      '<div class="qmeta"><span>Question ' + (qi + 1) + ' of ' + order.length + '</span><span>Score ' + score + '</span></div>' +
+      '<p class="qtext">' + esc(Q.q) + '</p>' +
+      '<div class="choices" id="choices">' + TOP.map(function (n) {
+        return '<button class="choice" type="button" data-n="' + n + '" style="--lc:var(--l' + n + ')"><span class="num">' + n + '</span>' + LAYERS[n].name + '</button>';
+      }).join('') + '</div>' +
+      '<div class="feedback" id="feedback" aria-live="polite"></div>' +
+      '<div><button class="btn primary" id="qNext" type="button" hidden>Next question</button></div>';
+    $('#choices').addEventListener('click', function (e) {
+      var b = e.target.closest('.choice');
+      if (!b || answered) return;
+      answered = true;
+      var pick = +b.getAttribute('data-n');
+      var ok = pick === Q.a;
+      if (ok) score++; else missed.push(order[qi]);
+      Array.prototype.forEach.call($('#choices').children, function (c) {
+        c.disabled = true;
+        var n = +c.getAttribute('data-n');
+        if (n === Q.a) c.classList.add('correct');
+        else if (n === pick) c.classList.add('wrong');
+      });
+      $('#feedback').innerHTML = ok
+        ? '<b class="ok">Correct.</b> ' + esc(Q.why)
+        : '<b class="no">Not quite.</b> It is layer ' + Q.a + ', ' + LAYERS[Q.a].name + '. ' + esc(Q.why);
+      var nx = $('#qNext');
+      nx.hidden = false;
+      nx.textContent = qi === order.length - 1 ? 'See my score' : 'Next question';
+      nx.focus();
+    });
+    $('#qNext').addEventListener('click', function () { qi++; renderQuiz(); });
+  }
+
+  /* ---------- at a glance ---------- */
+  function renderTable() {
+    $('#glanceTable').innerHTML =
+      '<thead><tr><th>Layer</th><th>Data unit</th><th>Addressing</th><th>Typical devices</th><th>TCP/IP model</th></tr></thead><tbody>' +
+      TOP.map(function (n) {
+        var L = LAYERS[n];
+        return '<tr><td><span class="num" style="--lc:var(--l' + n + ')">' + n + '</span>' + L.name + '</td><td>' + esc(L.pdu) + '</td><td>' + esc(L.addr) + '</td><td>' + esc(L.devices) + '</td><td>' + esc(L.tcpip) + '</td></tr>';
+      }).join('') + '</tbody>';
+  }
+
+  /* ---------- hash and boot ---------- */
+  function fromHash() {
+    var m = /^#layer-([1-7])$/.exec(location.hash || '');
+    if (m) selectLayer(+m[1], true);
+  }
+  window.addEventListener('hashchange', fromHash);
+
+  renderStack();
+  renderDetail();
+  renderWords();
+  renderDemo();
+  renderTable();
+  startQuiz();
+  fromHash();
+})();
+</script>
+
+</body></html>
