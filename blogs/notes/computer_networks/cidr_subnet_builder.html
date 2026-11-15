@@ -1,0 +1,491 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CIDR Subnet Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f6fa; --surface:#ffffff; --line:#d5dce8; --fg:#0f1726; --muted:#4a5568;
+  --accent:#1d6fb8; --accent-soft:#e3eefa; --host:#cbd5e1; --hostfg:#1e293b;
+  --good:#0f766e; --good-soft:#dcf3ef; --bad:#b42318; --bad-soft:#fde8e6; --warn:#b45309; --warn-soft:#fdf0dc;
+  --c0:#1d6fb8; --c1:#5b4bc4; --c2:#0f766e; --c3:#b45309; --c4:#be3d6b; --c5:#2f855a; --c6:#3b4fc9; --c7:#c2570c;
+  --on-seg:#ffffff; --unused:#e5e9f1;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --head:'Space Grotesk','Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1420; --surface:#161e2e; --line:#2a3550; --fg:#e8edf6; --muted:#9aa7bd;
+    --accent:#5aa9f0; --accent-soft:#17283f; --host:#2b364d; --hostfg:#dbe3f1;
+    --good:#3ac4b3; --good-soft:#12302d; --bad:#f2837a; --bad-soft:#3a1c1a; --warn:#f0a95a; --warn-soft:#3a2a12;
+    --c0:#5aa9f0; --c1:#9b8cf0; --c2:#3ac4b3; --c3:#f0a95a; --c4:#f08ab0; --c5:#5fd09a; --c6:#8a9bf5; --c7:#f59a5c;
+    --on-seg:#0b1220; --unused:#232d42; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1420; --surface:#161e2e; --line:#2a3550; --fg:#e8edf6; --muted:#9aa7bd;
+  --accent:#5aa9f0; --accent-soft:#17283f; --host:#2b364d; --hostfg:#dbe3f1;
+  --good:#3ac4b3; --good-soft:#12302d; --bad:#f2837a; --bad-soft:#3a1c1a; --warn:#f0a95a; --warn-soft:#3a2a12;
+  --c0:#5aa9f0; --c1:#9b8cf0; --c2:#3ac4b3; --c3:#f0a95a; --c4:#f08ab0; --c5:#5fd09a; --c6:#8a9bf5; --c7:#f59a5c;
+  --on-seg:#0b1220; --unused:#232d42; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--sans);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font:700 clamp(28px,5vw,42px)/1.1 var(--head);margin:0 0 8px;letter-spacing:-.01em;text-wrap:balance}
+h2{font:700 22px/1.2 var(--head);margin:0 0 6px;text-wrap:balance}
+h3{font:600 15px/1.3 var(--sans);margin:0 0 8px}
+p{margin:0 0 10px}
+.lead{color:var(--muted);max-width:68ch;margin-bottom:22px}
+.mono{font-family:var(--mono)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;min-width:0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tab{font:600 14px var(--sans);color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-seg)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.panel[hidden]{display:none}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font:600 12px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+input[type=text],input[type=number],select{font:500 15px var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;max-width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.btn{font:600 13px var(--sans);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-seg)}
+.btn.primary:hover:not(:disabled){color:var(--on-seg);filter:brightness(1.08)}
+.btn.small{padding:5px 10px;font-size:12px}
+.note{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:14px}
+.note.warn{background:var(--warn-soft);border-color:var(--warn)}
+.note.bad{background:var(--bad-soft);border-color:var(--bad)}
+.note.good{background:var(--good-soft);border-color:var(--good)}
+/* bits */
+.bitrow{display:flex;align-items:center;gap:12px;margin:10px 0}
+.bitlabel{width:84px;flex:none;font:600 12px var(--sans);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.bitscroll{overflow-x:auto;padding:8px 6px 4px;min-width:0}
+.bits{display:flex;gap:9px;width:max-content}
+.octet{display:flex;flex-direction:column;align-items:center;gap:4px}
+.octbits{display:flex;gap:2px}
+.bit{width:22px;height:32px;border-radius:6px;display:grid;place-items:center;font:700 14px var(--mono);background:var(--host);color:var(--hostfg);position:relative}
+.bit.net{background:var(--accent);color:var(--on-seg)}
+.bit.edge{margin-right:7px}
+.bit.edge::after{content:"";position:absolute;right:-7px;top:-7px;bottom:-7px;width:2px;background:var(--fg);border-radius:2px}
+.bit.click{cursor:pointer}
+.bit.click:hover{outline:2px solid var(--warn)}
+.octval{font:600 13px var(--mono);color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 2px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+.fact{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.fact .k{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fact .v{font:700 17px var(--mono);margin-top:2px;word-break:break-all}
+.formula{font:600 15px var(--mono);background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;overflow-wrap:anywhere}
+.formula b{color:var(--accent)}
+/* tables */
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:9px 12px;background:var(--bg);white-space:nowrap}
+td{padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+td.mono{font-size:13px}
+tr.hl td{background:var(--accent-soft)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+/* address bar */
+.abar{display:flex;height:64px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--unused);margin:12px 0 4px}
+.seg{display:flex;flex-direction:column;justify-content:center;align-items:center;color:var(--on-seg);font:700 12px/1.25 var(--mono);overflow:hidden;min-width:0;border:0;border-right:2px solid var(--surface);padding:0 2px;text-align:center}
+.seg small{font:500 11px var(--mono);opacity:.92}
+.seg.unused{background:var(--unused);color:var(--muted)}
+.axis{display:flex;justify-content:space-between;font:500 12px var(--mono);color:var(--muted)}
+.rows .rrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px;margin-bottom:8px;align-items:center}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+/* quiz */
+.qtext{font:600 19px/1.35 var(--head);margin:6px 0 14px;text-wrap:balance}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.opt{font:600 16px var(--mono);text-align:left;background:var(--bg);color:var(--fg);border:2px solid var(--line);border-radius:12px;padding:13px 14px;cursor:pointer;overflow-wrap:anywhere}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt.right{border-color:var(--good);background:var(--good-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt:disabled{cursor:default}
+.score{font:600 13px var(--sans);color:var(--muted)}
+.steps{margin:0;padding-left:20px}
+.steps li{margin-bottom:4px}
+@media (max-width:560px){
+  .bit{width:21px;height:30px;font-size:12px}
+  .bitlabel{width:100%}
+  .bitrow{flex-direction:column;align-items:flex-start;gap:2px}
+  .rows .rrow{grid-template-columns:1fr 90px auto}
+}
+</style>
+
+<div class="wrap">
+  <h1>CIDR Subnet Builder</h1>
+  <p class="lead">A CIDR block such as <span class="mono">192.168.10.0/24</span> is an address plus a prefix length. The prefix says how many of the 32 bits are the network. Try the four parts below, in order, to see how a block is read, split, sized and chosen.</p>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" id="t1" aria-selected="true" aria-controls="p1">1 · Read a block</button>
+    <button class="tab" role="tab" id="t2" aria-selected="false" aria-controls="p2">2 · Split a block</button>
+    <button class="tab" role="tab" id="t3" aria-selected="false" aria-controls="p3">3 · Fit blocks to needs</button>
+    <button class="tab" role="tab" id="t4" aria-selected="false" aria-controls="p4">4 · Practice</button>
+  </div>
+
+  <!-- ============ 1. READ ============ -->
+  <section class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+    <div class="card">
+      <h2>Read a CIDR block</h2>
+      <p>Type any IPv4 address and drag the prefix slider. Blue bits are the <b>network</b> part and grey bits are the <b>host</b> part. You can also click a bit in the mask row to set the prefix there.</p>
+      <div class="row">
+        <div class="field" style="flex:1 1 200px"><label for="a-ip">IPv4 address</label><input type="text" id="a-ip" value="192.168.10.77" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+        <div class="field" style="flex:2 1 280px"><label for="a-p">Prefix length: <span id="a-plab" class="mono">/26</span></label><input type="range" id="a-p" min="8" max="30" value="26"></div>
+      </div>
+      <div id="a-err"></div>
+      <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>network bits (fixed for every host)</span><span><i class="sw" style="background:var(--host)"></i>host bits (free to vary)</span></div>
+      <div id="a-bits"></div>
+      <div class="formula" id="a-formula"></div>
+      <div class="facts" id="a-facts"></div>
+      <div id="a-note"></div>
+    </div>
+    <div class="card">
+      <h3>Quick reference: how the prefix changes the block</h3>
+      <p style="color:var(--muted);font-size:14px">Every step to the right adds one network bit and cuts the block in half.</p>
+      <div class="tscroll"><table id="a-ref"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. SPLIT ============ -->
+  <section class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="card">
+      <h2>Split a block in half</h2>
+      <p>Subnetting is just borrowing one host bit to make the prefix one longer. That turns one block into two equal blocks. Start with a block, then press <b>Split</b> on any piece as many times as you like. <b>Merge</b> puts two matching halves back together.</p>
+      <div class="row">
+        <div class="field" style="flex:1 1 200px"><label for="s-ip">Parent network address</label><input type="text" id="s-ip" value="192.168.10.0" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label for="s-p">Parent prefix</label><select id="s-p"></select></div>
+        <button class="btn primary" id="s-reset">Start over</button>
+      </div>
+      <div id="s-err"></div>
+      <div id="s-info" class="note"></div>
+      <div class="abar" id="s-bar"></div>
+      <div class="axis"><span id="s-first"></span><span id="s-last"></span></div>
+      <div class="tscroll"><table id="s-table"></table></div>
+      <div class="note good" id="s-sum" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- ============ 3. FIT ============ -->
+  <section class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+    <div class="card">
+      <h2>Fit blocks to what each group needs</h2>
+      <p>Real networks need different sizes. For each group, choose the <b>smallest</b> block that holds its hosts, then place the blocks one after another, biggest first, so every block starts on its own size boundary. This is the CIDR way of avoiding waste.</p>
+      <div class="chips" id="f-presets"></div>
+      <div class="row">
+        <div class="field" style="flex:1 1 200px"><label for="f-ip">Parent network address</label><input type="text" id="f-ip" value="192.168.10.0" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label for="f-p">Parent prefix</label><select id="f-p"></select></div>
+      </div>
+      <div class="rows" id="f-rows"></div>
+      <button class="btn" id="f-add">+ Add a group</button>
+      <div id="f-err" style="margin-top:12px"></div>
+      <div class="abar" id="f-bar"></div>
+      <div class="axis"><span id="f-first"></span><span id="f-last"></span></div>
+      <div class="tscroll"><table id="f-table"></table></div>
+      <div class="note" id="f-sum" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <h3>The recipe</h3>
+      <ol class="steps">
+        <li>Add 2 to the hosts needed (one address for the network, one for broadcast).</li>
+        <li>Find the smallest power of two that is at least that number. Its exponent is the number of host bits <b>h</b>.</li>
+        <li>The prefix is <b>32 − h</b>.</li>
+        <li>Sort the groups from largest to smallest and place each block at the next address that is a multiple of its size.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ 4. PRACTICE ============ -->
+  <section class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+        <h2>Practice</h2><div class="score" id="q-score">Score 0 / 0</div>
+      </div>
+      <div class="legend" id="q-kind" style="margin-top:0"></div>
+      <div class="qtext" id="q-text"></div>
+      <div class="opts" id="q-opts"></div>
+      <div id="q-expl"></div>
+      <div style="margin-top:14px"><button class="btn primary" id="q-next" hidden>Next question</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var esc=function(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+function toInt(s){var m=/^\s*(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*$/.exec(s);if(!m)return null;var o=m.slice(1).map(Number);if(o.some(function(x){return x>255}))return null;return (((o[0]*256+o[1])*256+o[2])*256+o[3])>>>0}
+function toStr(n){n=n>>>0;return [n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].join('.')}
+function mask(p){return p===0?0:((0xFFFFFFFF<<(32-p))>>>0)}
+function size(p){return Math.pow(2,32-p)}
+function usable(p){return size(p)-2}
+function align(n,p){return (n&mask(p))>>>0}
+function bit(n,i){return Math.floor(n/Math.pow(2,31-i))%2}
+function sup(n){var s='⁰¹²³⁴⁵⁶⁷⁸⁹';return String(n).split('').map(function(d){return s[+d]}).join('')}
+function fmt(n){return n.toLocaleString('en-US')}
+function seg(i){return 'var(--c'+(i%8)+')'}
+
+/* ---------- tabs ---------- */
+var tabs=[].slice.call(document.querySelectorAll('.tab'));
+tabs.forEach(function(t,i){
+  t.addEventListener('click',function(){
+    tabs.forEach(function(x,j){x.setAttribute('aria-selected',String(i===j));$('#p'+(j+1)).hidden=(i!==j)});
+  });
+  t.addEventListener('keydown',function(e){
+    var k=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0; if(!k)return;
+    var n=tabs[(i+k+tabs.length)%tabs.length]; n.focus(); n.click(); e.preventDefault();
+  });
+});
+
+/* ---------- shared: prefix select ---------- */
+function fillPrefixSelect(sel,from,to,def){
+  var h='';for(var p=from;p<=to;p++)h+='<option value="'+p+'"'+(p===def?' selected':'')+'>/'+p+' ('+fmt(size(p))+' addresses)</option>';
+  sel.innerHTML=h;
+}
+
+/* =====================================================
+   1. READ A BLOCK
+===================================================== */
+var A={ip:toInt('192.168.10.77'),p:26};
+function bitRow(label,n,p,clickable,markEdge){
+  var h='<div class="bitrow"><div class="bitlabel">'+label+'</div><div class="bitscroll"><div class="bits">';
+  for(var o=0;o<4;o++){
+    h+='<div class="octet"><div class="octbits">';
+    for(var b=0;b<8;b++){
+      var i=o*8+b,v=bit(n,i);
+      var cls='bit'+(i<p?' net':'')+(i===p-1&&markEdge?' edge':'')+(clickable?' click':'');
+      h+='<div class="'+cls+'"'+(clickable?' data-i="'+i+'" title="Set prefix to /'+(i+1)+'"':'')+'>'+v+'</div>';
+    }
+    h+='</div><div class="octval">'+((n>>>(24-8*o))&255)+'</div></div>';
+  }
+  return h+'</div></div></div>';
+}
+function renderA(){
+  var ip=A.ip,p=A.p,m=mask(p),net=align(ip,p),sz=size(p),bc=net+sz-1,hb=32-p;
+  $('#a-plab').textContent='/'+p;
+  $('#a-bits').innerHTML=bitRow('IP address',ip,p,false,true)+bitRow('Subnet mask',m,p,true,true)+bitRow('IP AND mask',net,p,false,true)
+    +'<div style="font-size:13px;color:var(--muted)">The network address is the IP address AND the mask: keep the network bits, set every host bit to 0.</div>';
+  $('#a-formula').innerHTML='32 − <b>'+p+'</b> = <b>'+hb+'</b> host bits → 2'+sup(hb)+' = <b>'+fmt(sz)+'</b> addresses → '+fmt(sz)+' − 2 = <b>'+fmt(usable(p))+'</b> usable hosts';
+  var f=[['Network address',toStr(net)+'/'+p],['Subnet mask',toStr(m)],['Wildcard mask',toStr((~m)>>>0)],['Broadcast address',toStr(bc)],
+    ['First usable host',toStr(net+1)],['Last usable host',toStr(bc-1)],['Total addresses',fmt(sz)],['Usable hosts',fmt(usable(p))]];
+  $('#a-facts').innerHTML=f.map(function(x){return '<div class="fact"><div class="k">'+x[0]+'</div><div class="v">'+x[1]+'</div></div>'}).join('');
+  var note='';
+  if(ip===net) note='<div class="note warn">This address is the <b>network address</b> of the block, so it cannot be given to a host.</div>';
+  else if(ip===bc) note='<div class="note warn">This address is the <b>broadcast address</b> of the block, so it cannot be given to a host.</div>';
+  else note='<div class="note good">'+toStr(ip)+' is a valid host address inside the block '+toStr(net)+'/'+p+'.</div>';
+  $('#a-note').innerHTML=note;
+  var r='<tr><th>Prefix</th><th>Subnet mask</th><th>Host bits</th><th>Block size</th><th>Usable hosts</th></tr>';
+  for(var q=20;q<=30;q++)r+='<tr'+(q===p?' class="hl"':'')+'><td class="mono"><b>/'+q+'</b></td><td class="mono">'+toStr(mask(q))+'</td><td class="mono">'+(32-q)+'</td><td class="mono">'+fmt(size(q))+'</td><td class="mono">'+fmt(usable(q))+'</td></tr>';
+  $('#a-ref').innerHTML=r;
+}
+$('#a-ip').addEventListener('input',function(){
+  var v=toInt(this.value);
+  if(v===null){$('#a-err').innerHTML='<div class="note bad">Enter four numbers from 0 to 255 separated by dots, for example 192.168.10.77.</div>';return}
+  $('#a-err').innerHTML='';A.ip=v;renderA();
+});
+$('#a-p').addEventListener('input',function(){A.p=+this.value;renderA()});
+$('#a-bits').addEventListener('click',function(e){
+  var t=e.target.closest('.bit.click');if(!t)return;
+  var p=Math.min(30,Math.max(8,+t.dataset.i+1));A.p=p;$('#a-p').value=p;renderA();
+});
+renderA();
+
+/* =====================================================
+   2. SPLIT A BLOCK
+===================================================== */
+fillPrefixSelect($('#s-p'),16,28,24);
+var Sp={root:{net:toInt('192.168.10.0'),p:24},leaves:[]};
+function resetS(){
+  var v=toInt($('#s-ip').value),p=+$('#s-p').value;
+  if(v===null){$('#s-err').innerHTML='<div class="note bad">Enter a valid IPv4 address such as 192.168.10.0.</div>';return}
+  $('#s-err').innerHTML='';
+  var n=align(v,p);
+  Sp.root={net:n,p:p};Sp.leaves=[{net:n,p:p}];renderS(n!==v?'Your address was not on a /'+p+' boundary, so it was rounded down to '+toStr(n)+'.':'');
+}
+function renderS(msg){
+  var L=Sp.leaves.sort(function(a,b){return a.net-b.net}),R=Sp.root,total=size(R.p);
+  $('#s-info').innerHTML=(msg?esc(msg)+' ':'')+'Parent block: <b class="mono">'+toStr(R.net)+'/'+R.p+'</b> · '+fmt(total)+' addresses. Pieces now: <b>'+L.length+'</b>.';
+  $('#s-bar').innerHTML=L.map(function(b,i){
+    var w=size(b.p)/total*100;
+    return '<div class="seg" style="width:'+w+'%;background:'+seg(i)+'" title="'+toStr(b.net)+'/'+b.p+'">'+(w>9?'/'+b.p+'<small>'+(w>16?toStr(b.net):'')+'</small>':'')+'</div>';
+  }).join('');
+  $('#s-first').textContent=toStr(R.net);$('#s-last').textContent=toStr(R.net+total-1);
+  var h='<tr><th>Block</th><th>Mask</th><th>Usable range</th><th>Broadcast</th><th>Usable</th><th></th></tr>';
+  L.forEach(function(b,i){
+    var sz=size(b.p),sib=((b.net^sz)>>>0);
+    var canMerge=b.p>R.p&&L.some(function(x){return x.net===sib&&x.p===b.p});
+    h+='<tr><td class="mono"><i class="dot" style="background:'+seg(i)+'"></i><b>'+toStr(b.net)+'/'+b.p+'</b></td><td class="mono">'+toStr(mask(b.p))+'</td>'
+      +'<td class="mono">'+toStr(b.net+1)+' – '+toStr(b.net+sz-2)+'</td><td class="mono">'+toStr(b.net+sz-1)+'</td><td class="mono">'+fmt(usable(b.p))+'</td>'
+      +'<td><button class="btn small" data-act="split" data-i="'+i+'"'+(b.p>=30?' disabled':'')+'>Split</button> '
+      +'<button class="btn small" data-act="merge" data-i="'+i+'"'+(canMerge?'':' disabled')+'>Merge</button></td></tr>';
+  });
+  $('#s-table').innerHTML=h;
+  var smallest=Math.min.apply(null,L.map(function(b){return b.p})),largest=Math.max.apply(null,L.map(function(b){return b.p}));
+  var allUsable=L.reduce(function(a,b){return a+usable(b.p)},0);
+  $('#s-sum').innerHTML='Splitting into '+L.length+' pieces leaves <b>'+fmt(allUsable)+'</b> usable host addresses in total, compared with <b>'+fmt(usable(R.p))+'</b> in the parent. Each split costs 2 addresses, because every new subnet needs its own network and broadcast address.'
+    +(L.length===1?'':' Prefixes in use: /'+smallest+(smallest!==largest?' to /'+largest:'')+'.');
+}
+$('#s-table').addEventListener('click',function(e){
+  var t=e.target.closest('button[data-act]');if(!t||t.disabled)return;
+  var i=+t.dataset.i,b=Sp.leaves[i];
+  if(t.dataset.act==='split'){
+    var h=size(b.p)/2;Sp.leaves.splice(i,1,{net:b.net,p:b.p+1},{net:b.net+h,p:b.p+1});
+  }else{
+    var sib=((b.net^size(b.p))>>>0),lo=Math.min(b.net,sib);
+    Sp.leaves=Sp.leaves.filter(function(x){return !(x.p===b.p&&(x.net===b.net||x.net===sib))});
+    Sp.leaves.push({net:lo,p:b.p-1});
+  }
+  renderS('');
+});
+$('#s-reset').addEventListener('click',resetS);
+$('#s-ip').addEventListener('change',resetS);$('#s-p').addEventListener('change',resetS);
+Sp.leaves=[{net:Sp.root.net,p:Sp.root.p}];renderS('');
+
+/* =====================================================
+   3. FIT BLOCKS TO NEEDS
+===================================================== */
+fillPrefixSelect($('#f-p'),16,28,24);
+var presets={
+  'Campus (/24)':{ip:'192.168.10.0',p:24,rows:[['Finance',50],['Hostel',60],['Labs',30],['Admin',10]]},
+  'Small office (/24)':{ip:'10.1.1.0',p:24,rows:[['Sales',100],['Engineering',60],['Guest Wi-Fi',25],['Servers',12],['Router links',2]]},
+  'Too big for the block':{ip:'192.168.50.0',p:24,rows:[['Students',150],['Staff',80],['Labs',40]]}
+};
+var F={rows:[]};
+$('#f-presets').innerHTML='<span style="font-size:13px;color:var(--muted);align-self:center">Try an example:</span>'+Object.keys(presets).map(function(k){return '<button class="btn small" data-preset="'+esc(k)+'">'+esc(k)+'</button>'}).join('');
+function loadPreset(k){
+  var s=presets[k];$('#f-ip').value=s.ip;$('#f-p').value=s.p;
+  F.rows=s.rows.map(function(r){return {name:r[0],hosts:r[1]}});renderFRows();renderF();
+}
+function renderFRows(){
+  $('#f-rows').innerHTML=F.rows.map(function(r,i){
+    return '<div class="rrow"><input type="text" data-k="name" data-i="'+i+'" value="'+esc(r.name)+'" aria-label="Group name" style="font-family:var(--sans)">'
+     +'<input type="number" data-k="hosts" data-i="'+i+'" value="'+r.hosts+'" min="1" max="4000000" aria-label="Hosts needed">'
+     +'<button class="btn small" data-rm="'+i+'" aria-label="Remove group">Remove</button></div>';
+  }).join('');
+}
+function renderF(){
+  var v=toInt($('#f-ip').value),pp=+$('#f-p').value;
+  if(v===null){$('#f-err').innerHTML='<div class="note bad">Enter a valid parent network address, for example 192.168.10.0.</div>';return}
+  var net=align(v,pp),total=size(pp),end=net+total,msg='';
+  if(net!==v)msg='<div class="note warn">The parent address was rounded down to '+toStr(net)+'/'+pp+'.</div>';
+  $('#f-err').innerHTML=msg;
+  var items=F.rows.map(function(r,i){return {name:r.name||'Group '+(i+1),hosts:Math.max(1,Math.floor(+r.hosts)||1),i:i}})
+    .sort(function(a,b){return b.hosts-a.hosts||a.i-b.i});
+  var cursor=net,out=[],fail=[];
+  items.forEach(function(it){
+    var b=2;while(Math.pow(2,b)-2<it.hosts)b++;
+    var p=32-b,sz=Math.pow(2,b);
+    var res={name:it.name,hosts:it.hosts,b:b,p:p,sz:sz,how:'2'+sup(b)+' − 2 = '+fmt(sz-2)+' ≥ '+fmt(it.hosts)};
+    if(p<pp){res.err='Larger than the parent block';fail.push(res)}
+    else{
+      var start=Math.ceil(cursor/sz)*sz;
+      if(start+sz>end){res.err='No room left in the parent block';fail.push(res)}
+      else{res.net=start;cursor=start+sz}
+    }
+    out.push(res);
+  });
+  var placed=out.filter(function(r){return r.net!==undefined});
+  $('#f-bar').innerHTML=placed.map(function(r,i){
+    var w=r.sz/total*100;
+    return '<div class="seg" style="width:'+w+'%;background:'+seg(out.indexOf(r))+'" title="'+esc(r.name)+' '+toStr(r.net)+'/'+r.p+'">'+(w>10?esc(r.name)+'<small>/'+r.p+'</small>':(w>4?'/'+r.p:''))+'</div>';
+  }).join('')+'<div class="seg unused" style="flex:1" title="Unused">'+(cursor<end?'<small>unused</small>':'')+'</div>';
+  $('#f-first').textContent=toStr(net);$('#f-last').textContent=toStr(end-1);
+  var h='<tr><th>Group</th><th>Hosts needed</th><th>How the size is chosen</th><th>Block</th><th>Usable range</th><th>Broadcast</th><th>Spare</th></tr>';
+  out.forEach(function(r,i){
+    var c='<i class="dot" style="background:'+seg(i)+'"></i>';
+    if(r.net===undefined){h+='<tr><td>'+c+esc(r.name)+'</td><td class="mono">'+fmt(r.hosts)+'</td><td class="mono">'+r.how+' → /'+r.p+'</td><td colspan="4" style="color:var(--bad);font-weight:600">'+r.err+'</td></tr>';return}
+    h+='<tr><td>'+c+'<b>'+esc(r.name)+'</b></td><td class="mono">'+fmt(r.hosts)+'</td><td class="mono">'+r.how+' → /'+r.p+'</td>'
+     +'<td class="mono"><b>'+toStr(r.net)+'/'+r.p+'</b></td><td class="mono">'+toStr(r.net+1)+' – '+toStr(r.net+r.sz-2)+'</td><td class="mono">'+toStr(r.net+r.sz-1)+'</td><td class="mono">'+fmt(r.sz-2-r.hosts)+'</td></tr>';
+  });
+  if(!out.length)h='<tr><td style="padding:14px;color:var(--muted)">Add at least one group.</td></tr>';
+  $('#f-table').innerHTML=h;
+  var used=cursor-net,left=end-cursor;
+  var s=$('#f-sum');
+  if(fail.length){s.className='note bad';s.innerHTML='<b>'+fail.length+' group'+(fail.length>1?'s do':' does')+' not fit.</b> The blocks needed add up to more than the '+fmt(total)+' addresses in '+toStr(net)+'/'+pp+'. Try a bigger parent block (a shorter prefix) or fewer hosts.'}
+  else{s.className='note good';s.innerHTML='Allocated <b>'+fmt(used)+'</b> of '+fmt(total)+' addresses ('+Math.round(used/total*100)+'%). <b>'+fmt(left)+'</b> addresses are still free for future subnets.'}
+}
+$('#f-presets').addEventListener('click',function(e){var t=e.target.closest('[data-preset]');if(t)loadPreset(t.dataset.preset)});
+$('#f-rows').addEventListener('input',function(e){
+  var t=e.target,i=+t.dataset.i;if(isNaN(i))return;
+  F.rows[i][t.dataset.k]=t.dataset.k==='hosts'?(+t.value||1):t.value;renderF();
+});
+$('#f-rows').addEventListener('click',function(e){
+  var t=e.target.closest('[data-rm]');if(!t)return;
+  F.rows.splice(+t.dataset.rm,1);renderFRows();renderF();
+});
+$('#f-add').addEventListener('click',function(){F.rows.push({name:'Group '+(F.rows.length+1),hosts:20});renderFRows();renderF()});
+$('#f-ip').addEventListener('input',renderF);$('#f-p').addEventListener('change',renderF);
+loadPreset('Campus (/24)');
+
+/* =====================================================
+   4. PRACTICE
+===================================================== */
+var Q={score:0,total:0,cur:null,done:false};
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function pick(a){return a[ri(0,a.length-1)]}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=ri(0,i),t=a[i];a[i]=a[j];a[j]=t}return a}
+function uniq(correct,cands,n,filler){
+  var set=[String(correct)];
+  cands.concat([]).forEach(function(c){if(set.indexOf(String(c))<0)set.push(String(c))});
+  var guard=0;while(set.length<n&&guard++<50){var f=String(filler());if(set.indexOf(f)<0)set.push(f)}
+  return shuffle(set.slice(0,n));
+}
+function randIp(){return [pick([10,172,192]),0,ri(0,255),ri(1,254)]}
+function genQ(){
+  var t=ri(0,3),q={};
+  if(t===0){
+    var p=ri(20,30),sz=size(p),ans=sz-2;
+    q.kind='Count the hosts';q.text='How many usable host addresses are in a /'+p+' subnet?';q.ans=fmt(ans);
+    q.opts=uniq(q.ans,[fmt(sz),fmt(sz/2-2),fmt(sz*2-2),fmt(sz-1)],4,function(){return fmt(Math.pow(2,ri(2,11))-2)});
+    q.expl='32 − '+p+' = '+(32-p)+' host bits. 2'+sup(32-p)+' = '+fmt(sz)+' addresses, minus the network and broadcast addresses = <b>'+fmt(ans)+'</b> usable hosts.';
+  }else if(t===1){
+    var n=pick([6,12,25,40,60,100,120,200,500,900,1000]),b=2;while(Math.pow(2,b)-2<n)b++;
+    q.kind='Choose the prefix';q.text='A department needs '+fmt(n)+' hosts. Which is the smallest CIDR block that fits?';q.ans='/'+(32-b);
+    q.opts=uniq(q.ans,['/'+(32-b-1),'/'+(32-b+1),'/'+(32-b+2)],4,function(){return '/'+ri(18,30)});
+    q.expl=fmt(n)+' + 2 = '+fmt(n+2)+'. The smallest power of two that is at least that is 2'+sup(b)+' = '+fmt(Math.pow(2,b))+', so h = '+b+' host bits and the prefix is 32 − '+b+' = <b>/'+(32-b)+'</b> ('+fmt(Math.pow(2,b)-2)+' usable hosts).';
+  }else{
+    var ip=randIp(),p2=ri(20,29),ipi=toInt(ip.join('.')),net=align(ipi,p2),sz2=size(p2);
+    var useNet=(t===2);
+    var ans=useNet?net:net+sz2-1;
+    q.kind=useNet?'Find the network address':'Find the broadcast address';
+    q.text=(useNet?'What is the network address of ':'What is the broadcast address of ')+'<span class="mono">'+toStr(ipi)+'/'+p2+'</span>?';
+    q.ans=toStr(ans);
+    var cands=useNet?[net+sz2,net-sz2,net+2*sz2,align(ipi,p2-1)]:[net+sz2,net+sz2-2,net-1,net+sz2*2-1];
+    q.opts=uniq(q.ans,cands.filter(function(x){return x>=0&&x<4294967296}).map(toStr),4,function(){return toStr(net+ri(1,6)*sz2)});
+    q.expl='/'+p2+' leaves '+(32-p2)+' host bits, so blocks are '+fmt(sz2)+' addresses long and start at multiples of '+fmt(sz2)+' (in the part of the address where the block ends). '
+      +toStr(ipi)+' sits in the block <b>'+toStr(net)+'/'+p2+'</b>, which ends at <b>'+toStr(net+sz2-1)+'</b>. '
+      +(useNet?'The network address is the first address.':'The broadcast address is the last address.');
+  }
+  return q;
+}
+function renderQ(){
+  var q=Q.cur;
+  $('#q-kind').innerHTML='<span><i class="sw" style="background:var(--accent)"></i>'+q.kind+'</span>';
+  $('#q-text').innerHTML=q.text;
+  $('#q-opts').innerHTML=q.opts.map(function(o){return '<button class="opt" data-v="'+esc(o)+'">'+esc(o)+'</button>'}).join('');
+  $('#q-expl').innerHTML='';$('#q-next').hidden=true;Q.done=false;
+  $('#q-score').textContent='Score '+Q.score+' / '+Q.total;
+}
+function nextQ(){Q.cur=genQ();renderQ()}
+$('#q-opts').addEventListener('click',function(e){
+  var t=e.target.closest('.opt');if(!t||Q.done)return;
+  Q.done=true;Q.total++;
+  var ok=t.dataset.v===Q.cur.ans;if(ok)Q.score++;
+  [].slice.call(document.querySelectorAll('.opt')).forEach(function(b){
+    b.disabled=true;if(b.dataset.v===Q.cur.ans)b.classList.add('right');else if(b===t)b.classList.add('wrong');
+  });
+  $('#q-expl').innerHTML='<div class="note '+(ok?'good':'bad')+'" style="margin-top:14px"><b>'+(ok?'Correct.':'Not quite.')+'</b> '+Q.cur.expl+'</div>';
+  $('#q-score').textContent='Score '+Q.score+' / '+Q.total;
+  $('#q-next').hidden=false;$('#q-next').focus();
+});
+$('#q-next').addEventListener('click',nextQ);
+nextQ();
+})();
+</script>
+
+</body></html>
