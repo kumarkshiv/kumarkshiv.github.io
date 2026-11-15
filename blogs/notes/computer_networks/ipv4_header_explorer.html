@@ -1,0 +1,571 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>IPv4 Header Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f6fa; --surface:#ffffff; --line:#d5dce8; --fg:#0f1726; --muted:#4a5568;
+  --accent:#1d6fb8; --accent-soft:#e3eefa; --host:#cbd5e1; --hostfg:#1e293b;
+  --good:#0f766e; --good-soft:#dcf3ef; --bad:#b42318; --bad-soft:#fde8e6; --warn:#b45309; --warn-soft:#fdf0dc;
+  --k-format:#1d6fb8; --k-qos:#5b4bc4; --k-frag:#b45309; --k-fwd:#0f766e; --k-addr:#be3d6b; --k-opt:#64748b;
+  --on-seg:#ffffff;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --head:'Space Grotesk','Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1420; --surface:#161e2e; --line:#2a3550; --fg:#e8edf6; --muted:#9aa7bd;
+    --accent:#5aa9f0; --accent-soft:#17283f; --host:#2b364d; --hostfg:#dbe3f1;
+    --good:#3ac4b3; --good-soft:#12302d; --bad:#f2837a; --bad-soft:#3a1c1a; --warn:#f0a95a; --warn-soft:#3a2a12;
+    --k-format:#5aa9f0; --k-qos:#9b8cf0; --k-frag:#f0a95a; --k-fwd:#3ac4b3; --k-addr:#f08ab0; --k-opt:#8b99b0;
+    --on-seg:#0b1220; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1420; --surface:#161e2e; --line:#2a3550; --fg:#e8edf6; --muted:#9aa7bd;
+  --accent:#5aa9f0; --accent-soft:#17283f; --host:#2b364d; --hostfg:#dbe3f1;
+  --good:#3ac4b3; --good-soft:#12302d; --bad:#f2837a; --bad-soft:#3a1c1a; --warn:#f0a95a; --warn-soft:#3a2a12;
+  --k-format:#5aa9f0; --k-qos:#9b8cf0; --k-frag:#f0a95a; --k-fwd:#3ac4b3; --k-addr:#f08ab0; --k-opt:#8b99b0;
+  --on-seg:#0b1220; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--sans);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font:700 clamp(28px,5vw,42px)/1.1 var(--head);margin:0 0 8px;letter-spacing:-.01em;text-wrap:balance}
+h2{font:700 22px/1.2 var(--head);margin:0 0 6px;text-wrap:balance}
+h3{font:600 15px/1.3 var(--sans);margin:0 0 8px}
+p{margin:0 0 10px}
+.lead{color:var(--muted);max-width:68ch;margin-bottom:22px}
+.mono{font-family:var(--mono)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;min-width:0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tab{font:600 14px var(--sans);color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-seg)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.panel[hidden]{display:none}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label,.lab{font:600 12px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+input[type=text],input[type=number],select{font:500 15px var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;max-width:100%;width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:500;cursor:pointer}
+.btn{font:600 13px var(--sans);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-seg)}
+.btn.primary:hover:not(:disabled){color:var(--on-seg);filter:brightness(1.08)}
+.note{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:14px}
+.note.warn{background:var(--warn-soft);border-color:var(--warn)}
+.note.bad{background:var(--bad-soft);border-color:var(--bad)}
+.note.good{background:var(--good-soft);border-color:var(--good)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 12px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+/* header diagram */
+.dscroll{overflow-x:auto;padding:4px 2px 8px}
+.diagram{display:grid;grid-template-columns:34px repeat(32,minmax(0,1fr));min-width:760px;gap:0;align-items:stretch}
+.ruler{font:500 10px var(--mono);color:var(--muted);text-align:center;padding-bottom:3px}
+.rowlab{font:600 11px var(--mono);color:var(--muted);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
+.bytelab{font:600 11px var(--sans);color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--line);margin:0 2px 4px;padding-bottom:2px}
+.fld{grid-column:span var(--n);min-height:70px;margin:2px;border:0;border-radius:8px;background:var(--cat);color:var(--on-seg);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:4px 3px;cursor:pointer;font-family:var(--sans);text-align:center;min-width:0;overflow:hidden}
+.fld .nm{font-weight:700;font-size:13px;line-height:1.15}
+.fld .sz{font:500 11px var(--mono);opacity:.9}
+.fld .vl{font:700 13px var(--mono);overflow-wrap:anywhere;line-height:1.15}
+.fld:hover{filter:brightness(1.1)}
+.fld[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:1px}
+.fld.opt{background:transparent;border:2px dashed var(--k-opt);color:var(--fg);min-height:52px}
+.fld.opt .sz{color:var(--muted)}
+.fld.changed{animation:pulse .9s}
+@keyframes pulse{0%{transform:scale(1)}30%{transform:scale(1.05)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.fld.changed{animation:none}}
+/* detail */
+.detail{border:1px solid var(--line);border-left:6px solid var(--cat,var(--accent));border-radius:12px;padding:14px 16px;margin-top:10px;background:var(--bg)}
+.detail h3{font:700 19px var(--head);margin-bottom:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{font:600 12px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--muted)}
+.detail ul{margin:6px 0 8px;padding-left:20px}
+.detail li{margin-bottom:3px}
+.ex{font:600 13px var(--mono);background:var(--surface);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:14px 0 0}
+.fact{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.fact .k{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fact .v{font:700 16px var(--mono);margin-top:2px;overflow-wrap:anywhere}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+/* hex */
+.hex{font:600 15px var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;line-height:1.8;overflow-x:auto;white-space:pre}
+.hex .ck{background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:0 3px}
+details{margin-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:9px 12px;background:var(--bg);white-space:nowrap}
+td{padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+td.wrapt{white-space:normal;min-width:220px}
+tr.cur td{background:var(--accent-soft)}
+tr.drop td{background:var(--bad-soft)}
+td.chg{color:var(--warn);font-weight:700}
+/* path */
+.path{display:flex;align-items:center;gap:0;overflow-x:auto;padding:10px 2px 14px}
+.node{flex:none;min-width:84px;text-align:center;border:2px solid var(--line);border-radius:12px;padding:10px 8px;background:var(--bg);font:600 13px var(--sans)}
+.node small{display:block;font:500 11px var(--mono);color:var(--muted);margin-top:2px}
+.node.on{border-color:var(--accent);background:var(--accent-soft)}
+.node.dead{border-color:var(--bad);background:var(--bad-soft)}
+.node.done{border-color:var(--good)}
+.link{flex:none;width:34px;height:3px;background:var(--line)}
+.link.on{background:var(--good)}
+/* frag bar */
+.fbar{display:flex;height:58px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:10px 0 4px}
+.fseg{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-seg);font:700 12px/1.25 var(--mono);min-width:0;overflow:hidden;border-right:2px solid var(--surface)}
+.fseg small{font-weight:500;font-size:11px;opacity:.92}
+/* quiz */
+.qtext{font:600 19px/1.35 var(--head);margin:6px 0 14px;text-wrap:balance}
+.qopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.qopt{font:600 15px var(--sans);text-align:left;background:var(--bg);color:var(--fg);border:2px solid var(--line);border-radius:12px;padding:13px 14px;cursor:pointer;overflow-wrap:anywhere}
+.qopt:hover:not(:disabled){border-color:var(--accent)}
+.qopt.right{border-color:var(--good);background:var(--good-soft)}
+.qopt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.qopt:disabled{cursor:default}
+.score{font:600 13px var(--sans);color:var(--muted)}
+@media (max-width:560px){ .grid2{grid-template-columns:1fr 1fr} }
+</style>
+
+<div class="wrap">
+  <h1>IPv4 Header Explorer</h1>
+  <p class="lead">Every IPv4 packet starts with a header of 20 to 60 bytes that tells routers where the packet came from, where it is going and how to handle it. Click the fields, build your own header, watch TTL count down, and see how big packets are fragmented.</p>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" id="t1" aria-selected="true" aria-controls="p1">1 · Header map</button>
+    <button class="tab" role="tab" id="t2" aria-selected="false" aria-controls="p2">2 · Build a header</button>
+    <button class="tab" role="tab" id="t3" aria-selected="false" aria-controls="p3">3 · TTL journey</button>
+    <button class="tab" role="tab" id="t4" aria-selected="false" aria-controls="p4">4 · Fragmentation</button>
+    <button class="tab" role="tab" id="t5" aria-selected="false" aria-controls="p5">5 · Quiz</button>
+  </div>
+
+  <!-- 1 MAP -->
+  <section class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+    <div class="card">
+      <h2>The header, field by field</h2>
+      <p>Each row is 32 bits (4 bytes) wide, and each box is as wide as its field. Click any box to learn what it does.</p>
+      <div class="legend" id="m-legend"></div>
+      <div class="dscroll"><div class="diagram" id="m-diagram"></div></div>
+      <div class="detail" id="m-detail"></div>
+      <div class="facts">
+        <div class="fact"><div class="k">Fixed part</div><div class="v">20 bytes (5 rows)</div></div>
+        <div class="fact"><div class="k">Options</div><div class="v">0 to 40 bytes</div></div>
+        <div class="fact"><div class="k">Header length</div><div class="v">IHL × 4 → 20 to 60 B</div></div>
+        <div class="fact"><div class="k">Largest packet</div><div class="v">65,535 bytes</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 BUILD -->
+  <section class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="card">
+      <h2>Build a header</h2>
+      <p>Change the values and the header updates. The checksum is calculated for you, exactly as a real host would.</p>
+      <div class="grid2">
+        <div class="field"><label for="b-src">Source address</label><input type="text" id="b-src" value="192.168.1.10" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label for="b-dst">Destination address</label><input type="text" id="b-dst" value="93.184.216.34" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label for="b-proto">Protocol</label><select id="b-proto"></select></div>
+        <div class="field"><label for="b-ttl">TTL (0 to 255)</label><input type="number" id="b-ttl" min="0" max="255" value="64"></div>
+        <div class="field"><label for="b-pay">Payload size (bytes)</label><input type="number" id="b-pay" min="0" max="65515" value="1460"></div>
+        <div class="field"><label for="b-dscp">DSCP (0 to 63)</label><input type="number" id="b-dscp" min="0" max="63" value="0"></div>
+        <div class="field"><label for="b-ecn">ECN</label><select id="b-ecn"><option value="0">00 · not ECN-capable</option><option value="1">01 · ECN-capable (1)</option><option value="2">10 · ECN-capable (0)</option><option value="3">11 · congestion experienced</option></select></div>
+        <div class="field"><label for="b-id">Identification</label><input type="number" id="b-id" min="0" max="65535" value="54321"></div>
+        <div class="field"><label for="b-off">Fragment offset (0 to 8191)</label><input type="number" id="b-off" min="0" max="8191" value="0"></div>
+      </div>
+      <div class="row" style="gap:22px;margin-bottom:6px">
+        <label class="chk"><input type="checkbox" id="b-df" checked> DF · Don't Fragment</label>
+        <label class="chk"><input type="checkbox" id="b-mf"> MF · More Fragments</label>
+        <label class="chk"><input type="checkbox" id="b-opt"> Add 4 bytes of options</label>
+      </div>
+      <div id="b-err"></div>
+      <div class="legend" id="b-legend"></div>
+      <div class="dscroll"><div class="diagram" id="b-diagram"></div></div>
+      <div class="detail" id="b-detail"></div>
+    </div>
+    <div class="card">
+      <h3>The header as bytes (hex)</h3>
+      <div class="hex" id="b-hex"></div>
+      <div class="note" id="b-verify"></div>
+      <details><summary>Show how the checksum is calculated</summary><div id="b-steps" style="margin-top:10px"></div></details>
+    </div>
+  </section>
+
+  <!-- 3 TTL -->
+  <section class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+    <div class="card">
+      <h2>TTL: a packet's countdown</h2>
+      <p>Each router subtracts 1 from TTL. If it reaches 0, the router throws the packet away and sends an ICMP "Time Exceeded" message back. This stops packets from looping forever. Because the header changes, <b>every router must also recompute the header checksum</b>.</p>
+      <div class="grid2">
+        <div class="field"><label for="l-ttl">Starting TTL</label><input type="number" id="l-ttl" min="1" max="255" value="4"></div>
+        <div class="field"><label for="l-n">Routers on the path</label><input type="number" id="l-n" min="1" max="8" value="5"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="l-step">Step to next hop</button>
+        <button class="btn" id="l-run">Run all hops</button>
+        <button class="btn" id="l-reset">Reset</button>
+      </div>
+      <div class="path" id="l-path"></div>
+      <div id="l-msg"></div>
+      <div class="tscroll"><table id="l-table"></table></div>
+      <div class="note">This is how <b>traceroute</b> works: it sends packets with TTL 1, 2, 3 … so that each router in turn drops one and reveals itself with its "Time Exceeded" reply.</div>
+    </div>
+  </section>
+
+  <!-- 4 FRAG -->
+  <section class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+    <div class="card">
+      <h2>Fragmentation</h2>
+      <p>A link can only carry packets up to its <b>MTU</b>. If a packet is bigger, a router splits it into fragments. All fragments share one <b>Identification</b>, every fragment except the last has <b>MF = 1</b>, and <b>Fragment offset</b> says where the data belongs, counted in 8-byte units.</p>
+      <div class="grid2">
+        <div class="field"><label for="g-pay">Data in the original packet (bytes)</label><input type="number" id="g-pay" min="0" max="65515" value="4000"></div>
+        <div class="field"><label for="g-mtu">Link MTU (bytes)</label><select id="g-mtu"><option value="296">296 · slow serial link</option><option value="576">576 · legacy minimum</option><option value="1280">1280 · IPv6 minimum</option><option value="1480">1480 · PPPoE-style tunnel</option><option value="1500" selected>1500 · Ethernet</option><option value="9000">9000 · jumbo frames</option></select></div>
+        <div class="field"><label for="g-id">Identification</label><input type="number" id="g-id" min="0" max="65535" value="54321"></div>
+      </div>
+      <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="g-df"> Set DF (Don't Fragment)</label>
+      <div id="g-msg"></div>
+      <div class="fbar" id="g-bar"></div>
+      <div class="tscroll"><table id="g-table"></table></div>
+      <div class="note" id="g-sum"></div>
+    </div>
+  </section>
+
+  <!-- 5 QUIZ -->
+  <section class="panel" id="p5" role="tabpanel" aria-labelledby="t5" hidden>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+        <h2>Check yourself</h2><div class="score" id="q-score"></div>
+      </div>
+      <div class="qtext" id="q-text"></div>
+      <div class="qopts" id="q-opts"></div>
+      <div id="q-expl"></div>
+      <div style="margin-top:14px"><button class="btn primary" id="q-next" hidden>Next question</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var esc=function(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+function fmt(n){return n.toLocaleString('en-US')}
+function toInt(s){var m=/^\s*(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*$/.exec(s);if(!m)return null;var o=m.slice(1).map(Number);if(o.some(function(x){return x>255}))return null;return (((o[0]*256+o[1])*256+o[2])*256+o[3])>>>0}
+function clamp(v,lo,hi){v=Math.floor(+v);if(isNaN(v))v=lo;return Math.max(lo,Math.min(hi,v))}
+function hex(n,w){var s=n.toString(16).toUpperCase();while(s.length<w)s='0'+s;return s}
+function isPrivate(n){return (n>>>24)===10||(n>>>20)===0xAC1||(n>>>16)===0xC0A8}
+
+/* tabs */
+var tabs=[].slice.call(document.querySelectorAll('.tab'));
+tabs.forEach(function(t,i){
+  t.addEventListener('click',function(){tabs.forEach(function(x,j){x.setAttribute('aria-selected',String(i===j));$('#p'+(j+1)).hidden=(i!==j)})});
+  t.addEventListener('keydown',function(e){var k=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!k)return;var n=tabs[(i+k+tabs.length)%tabs.length];n.focus();n.click();e.preventDefault()});
+});
+
+/* ---------- field catalogue ---------- */
+var CATS={format:'Format and size',qos:'Traffic class',frag:'Fragmentation',fwd:'Forwarding and delivery',addr:'Addresses',opt:'Options'};
+var PROTO={1:'ICMP',2:'IGMP',6:'TCP',17:'UDP',41:'IPv6-in-IPv4',47:'GRE',50:'ESP',89:'OSPF'};
+var FIELDS=[
+ {id:'version',name:'Version',bits:4,row:0,cat:'format',
+  what:'Tells the receiver which version of IP this packet uses, so it knows how to read the rest of the header.',
+  pts:['For IPv4 the value is always 4 (binary 0100).','IPv6 packets carry 6 here and have a completely different header.','A device that sees any other value should discard the packet.'],ex:'0100 (binary) = 4'},
+ {id:'ihl',name:'IHL',full:'Internet Header Length',bits:4,row:0,cat:'format',
+  what:'The header length, counted in 32-bit words (4 bytes). It lets the receiver find where options end and the data begins.',
+  pts:['Smallest valid value is 5, meaning 5 × 4 = 20 bytes (no options).','Largest is 15, meaning 15 × 4 = 60 bytes (20 + 40 bytes of options).','Almost every real packet has IHL = 5.'],ex:'IHL 5 → 5 × 4 = 20 bytes'},
+ {id:'dscp',name:'DSCP',full:'Differentiated Services Code Point',bits:6,row:0,cat:'qos',
+  what:'Marks the packet\'s traffic class so routers can give it a priority, for example voice before bulk downloads.',
+  pts:['0 means default "best effort" delivery.','46 (EF) is commonly used for voice, 34 (AF41) for interactive video.','Networks may rewrite or ignore it, so it is a request, not a guarantee.'],ex:'DSCP 46 = Expedited Forwarding (voice)'},
+ {id:'ecn',name:'ECN',full:'Explicit Congestion Notification',bits:2,row:0,cat:'qos',
+  what:'Lets a congested router signal "slow down" by setting a mark instead of dropping the packet.',
+  pts:['00: the sender does not support ECN.','01 or 10: the sender supports ECN.','11: a router experienced congestion and marked this packet.'],ex:'11 = Congestion Experienced'},
+ {id:'total',name:'Total Length',bits:16,row:0,cat:'format',
+  what:'The size of the whole packet in bytes: header plus data.',
+  pts:['A 16-bit field, so the largest possible packet is 65,535 bytes.','Data size = Total Length − header length.','On Ethernet most packets are at most 1,500 bytes (the MTU).'],ex:'1500 = 20 header + 1480 data'},
+ {id:'id',name:'Identification',bits:16,row:1,cat:'frag',
+  what:'A number chosen by the sender so the receiver can tell which fragments belong to the same original packet.',
+  pts:['All fragments of one packet carry the same Identification.','Different packets from the same sender normally get different values.','Together with source, destination and protocol it identifies a packet during reassembly.'],ex:'54321 on every fragment'},
+ {id:'flags',name:'Flags',bits:3,row:1,cat:'frag',
+  what:'Three control bits that govern fragmentation.',
+  pts:['Bit 0: reserved, must be 0.','Bit 1 (DF): Don\'t Fragment. If the packet is too big, routers must drop it instead (and reply with ICMP).','Bit 2 (MF): More Fragments. 1 on every fragment except the last, and 0 on an unfragmented packet.'],ex:'010 = DF set   ·   001 = MF set'},
+ {id:'off',name:'Fragment Offset',bits:13,row:1,cat:'frag',
+  what:'Says where this fragment\'s data belongs in the original packet, counted in units of 8 bytes.',
+  pts:['The first fragment (and any unfragmented packet) has offset 0.','Because it is counted in 8-byte units, every fragment except the last carries a multiple of 8 data bytes.','13 bits allow 8,191 × 8 = 65,528 bytes of reach.'],ex:'Offset 185 → data starts at byte 185 × 8 = 1480'},
+ {id:'ttl',name:'TTL',full:'Time To Live',bits:8,row:2,cat:'fwd',
+  what:'A hop limit. Every router subtracts 1, and a packet whose TTL reaches 0 is discarded.',
+  pts:['Stops packets from circling forever if routing loops occur.','Routers that drop a packet reply with ICMP "Time Exceeded", which traceroute uses.','Common starting values: 64 (Linux, macOS), 128 (Windows), 255 (many routers).'],ex:'TTL 64 → 63 → 62 …'},
+ {id:'proto',name:'Protocol',bits:8,row:2,cat:'fwd',
+  what:'Names the protocol carried inside the data, so the receiving host knows which module should process it.',
+  pts:['1 = ICMP, 6 = TCP, 17 = UDP.','89 = OSPF, 41 = IPv6 inside IPv4, 47 = GRE tunnels.','This is the "next header" link between the network layer and the transport layer.'],ex:'6 = TCP   ·   17 = UDP'},
+ {id:'ck',name:'Header Checksum',bits:16,row:2,cat:'fwd',
+  what:'A 16-bit check value that detects corruption in the header.',
+  pts:['Computed over the header only, not the data. TCP and UDP have their own checksums for data.','Recomputed at every router, because TTL changes at every hop.','Method: add all 16-bit words in ones\' complement arithmetic and invert the result. A valid header sums to 0xFFFF.'],ex:'Sum of all words including checksum = 0xFFFF'},
+ {id:'src',name:'Source Address',bits:32,row:3,cat:'addr',
+  what:'The IPv4 address of the sender, written as four bytes.',
+  pts:['The receiver uses it to reply.','A NAT router may rewrite it when traffic leaves a private network.','Addresses such as 10.x.x.x, 172.16–31.x.x and 192.168.x.x are private and not routed on the Internet.'],ex:'192.168.1.10 = C0 A8 01 0A'},
+ {id:'dst',name:'Destination Address',bits:32,row:4,cat:'addr',
+  what:'The IPv4 address of the intended receiver. Routers look at this field to decide where to forward the packet.',
+  pts:['Routers match it against their routing table using the longest matching prefix.','It normally stays unchanged from source to destination.','It can also be a broadcast or multicast address.'],ex:'93.184.216.34 = 5D B8 D8 22'},
+ {id:'opt',name:'Options',bits:32,row:5,cat:'opt',optional:true,
+  what:'Rarely used extra fields, from 0 to 40 bytes. If present, they are padded so the header stays a multiple of 4 bytes.',
+  pts:['Examples: Record Route, Timestamp, Loose and Strict Source Routing.','Packets with options are often slow-pathed or blocked by routers for security, so options are almost never seen.','When options exist, IHL is larger than 5.'],ex:'IHL 6 → 4 bytes of options'}
+];
+var BYID={};FIELDS.forEach(function(f){BYID[f.id]=f});
+var ROWLAB=['0','4','8','12','16','20'];
+
+function legend(el){el.innerHTML=Object.keys(CATS).map(function(k){return '<span><i class="sw" style="background:var(--k-'+k+')"></i>'+CATS[k]+'</span>'}).join('')}
+function diagramHTML(vals,sel,withOpt){
+  var h='<div></div>';
+  for(var i=0;i<4;i++)h+='<div class="bytelab" style="grid-column:span 8">Byte '+i+'</div>';
+  var rowNow=-1,count=0;
+  FIELDS.forEach(function(f){
+    if(f.optional&&!withOpt&&withOpt!==undefined&&false)return;
+    if(f.row!==rowNow){rowNow=f.row;h+='<div class="rowlab" title="Byte offset of this row">'+ROWLAB[f.row]+'</div>'}
+    var v=vals?vals[f.id]:null;
+    h+='<button class="fld'+(f.optional?' opt':'')+'" style="--n:'+f.bits+';--cat:var(--k-'+f.cat+')" data-f="'+f.id+'" aria-pressed="'+(sel===f.id)+'" aria-label="'+esc(f.full||f.name)+'">'
+      +'<span class="nm">'+esc(f.name)+'</span>'
+      +(v!==null&&v!==undefined?'<span class="vl">'+esc(v)+'</span>':'')
+      +'<span class="sz">'+(f.optional?'0 to 320 bits (0–40 bytes)':f.bits+' bit'+(f.bits>1?'s':''))+'</span></button>';
+  });
+  return h;
+}
+function detailHTML(id,extra){
+  var f=BYID[id],start=0,r=-1,pos=0;
+  var s=0;for(var i=0;i<FIELDS.length;i++){var g=FIELDS[i];if(g.id===id)break;s+=g.bits}
+  var where=f.optional?'Starts at byte 20':'Bits '+(s)+(f.bits>1?'–'+(s+f.bits-1):'')+' · '+(f.bits>=8&&f.bits%8===0?'bytes '+(s/8)+(f.bits>8?'–'+((s+f.bits)/8-1):''):'byte '+Math.floor(s/8));
+  return '<h3 style="--x:0">'+esc(f.name)+(f.full?' <span style="font:500 14px var(--sans);color:var(--muted)">('+esc(f.full)+')</span>':'')
+    +' <span class="chip">'+(f.optional?'0–40 bytes':f.bits+' bits')+'</span><span class="chip">'+where+'</span></h3>'
+    +'<p>'+esc(f.what)+'</p><ul>'+f.pts.map(function(p){return '<li>'+esc(p)+'</li>'}).join('')+'</ul>'
+    +'<div class="ex">Example: '+esc(f.ex)+'</div>'
+    +(extra?'<div class="note" style="margin-bottom:0"><b>Your value:</b> '+extra+'</div>':'');
+}
+
+/* ---------- 1. MAP ---------- */
+var mSel='version';
+legend($('#m-legend'));
+function renderMap(){
+  $('#m-diagram').innerHTML=diagramHTML(null,mSel);
+  var d=$('#m-detail');d.style.setProperty('--cat','var(--k-'+BYID[mSel].cat+')');d.innerHTML=detailHTML(mSel);
+}
+$('#m-diagram').addEventListener('click',function(e){var t=e.target.closest('.fld');if(!t)return;mSel=t.dataset.f;renderMap()});
+renderMap();
+
+/* ---------- checksum + header build ---------- */
+function build(P){
+  var hl=P.opt?24:20,ihl=hl/4,total=hl+P.pay;
+  var b=[(4<<4)|ihl,(P.dscp<<2)|P.ecn,total>>8,total&255,P.id>>8,P.id&255];
+  var fw=(((P.df?2:0)|(P.mf?1:0))<<13)|P.off;
+  b.push(fw>>8,fw&255,P.ttl,P.proto,0,0);
+  [P.src,P.dst].forEach(function(a){b.push(a>>>24,(a>>>16)&255,(a>>>8)&255,a&255)});
+  if(P.opt)b.push(1,1,1,0);
+  var ck=csum(b);b[10]=ck>>8;b[11]=ck&255;
+  return {bytes:b,hl:hl,ihl:ihl,total:total,ck:ck,fw:fw};
+}
+function csum(b){var s=0;for(var i=0;i<b.length;i+=2)s+=(b[i]<<8)|(b[i+1]||0);while(s>>>16)s=(s&0xFFFF)+(s>>>16);return (~s)&0xFFFF}
+
+/* ---------- 2. BUILD ---------- */
+var P={src:toInt('192.168.1.10'),dst:toInt('93.184.216.34'),proto:6,ttl:64,pay:1460,dscp:0,ecn:0,id:54321,off:0,df:true,mf:false,opt:false};
+var bSel='ttl',lastVals={};
+legend($('#b-legend'));
+$('#b-proto').innerHTML=[6,17,1,89,47].map(function(p){return '<option value="'+p+'">'+p+' · '+PROTO[p]+'</option>'}).join('');
+function readInputs(){
+  var err='';
+  var s=toInt($('#b-src').value),d=toInt($('#b-dst').value);
+  if(s===null)err+='Source address is not a valid IPv4 address. ';else P.src=s;
+  if(d===null)err+='Destination address is not a valid IPv4 address. ';else P.dst=d;
+  P.proto=+$('#b-proto').value;P.ttl=clamp($('#b-ttl').value,0,255);
+  P.dscp=clamp($('#b-dscp').value,0,63);P.ecn=+$('#b-ecn').value;
+  P.id=clamp($('#b-id').value,0,65535);P.off=clamp($('#b-off').value,0,8191);
+  P.df=$('#b-df').checked;P.mf=$('#b-mf').checked;P.opt=$('#b-opt').checked;
+  P.pay=clamp($('#b-pay').value,0,65535-(P.opt?24:20));
+  if(P.df&&P.mf)err+='DF and MF are both set. That is unusual: a packet that must not be fragmented should not say more fragments follow. ';
+  if(P.off>0&&!P.mf)err+='Offset is above 0 and MF is 0, so this describes the <b>last fragment</b> of a larger packet. ';
+  $('#b-err').innerHTML=err?'<div class="note warn">'+err+'</div>':'';
+}
+function valueNote(id,H){
+  switch(id){
+    case 'version':return '4: IPv4.';
+    case 'ihl':return H.ihl+' × 4 = <b>'+H.hl+' bytes</b> of header'+(P.opt?' (20 fixed + 4 of options).':', no options.');
+    case 'dscp':return 'DSCP '+P.dscp+': '+(P.dscp===0?'default best-effort treatment.':P.dscp===46?'Expedited Forwarding, the class normally used for voice.':P.dscp===34?'AF41, often used for interactive video.':'a traffic class set by your network\'s policy.');
+    case 'ecn':return ['not ECN-capable: the sender does not use congestion marking.','ECN-capable transport (1).','ECN-capable transport (0).','Congestion Experienced: a router on the path marked this packet.'][P.ecn];
+    case 'total':return H.hl+' bytes of header + '+fmt(P.pay)+' bytes of data = <b>'+fmt(H.total)+' bytes</b>.';
+    case 'id':return P.id+'. Every fragment of this packet would carry the same number.';
+    case 'flags':return 'Bits '+(P.df?'010':P.mf?'001':'000')+(P.df&&P.mf?' (011)':'')+': '+(P.df?'DF set, routers must not fragment it. ':'DF clear, routers may fragment it. ')+(P.mf?'MF set, more fragments follow.':'MF clear, this is the last (or only) piece.');
+    case 'off':return P.off+' × 8 = <b>'+fmt(P.off*8)+' bytes</b> from the start of the original data'+(P.off===0?' (first piece).':'.');
+    case 'ttl':return P.ttl===0?'TTL is 0: any router will discard this packet.':'The packet can cross up to <b>'+(P.ttl-1)+'</b> routers; the router that brings TTL to 0 drops it.';
+    case 'proto':return P.proto+' = '+(PROTO[P.proto]||'unknown')+'. The receiver hands the data to that protocol.';
+    case 'ck':return '0x'+hex(H.ck,4)+' was computed from the other header words. If a single header bit flips in transit, the sum no longer equals 0xFFFF and the packet is discarded.';
+    case 'src':return toStr(P.src)+(isPrivate(P.src)?' is a <b>private</b> address; a NAT router would replace it on the way to the Internet.':' is a public address.');
+    case 'dst':return toStr(P.dst)+(isPrivate(P.dst)?' is a <b>private</b> address, so this packet will not be routed over the public Internet.':' is a public address; routers forward on its network prefix.');
+    case 'opt':return P.opt?'4 bytes: No-Operation ×3 (01 01 01) and End-of-List (00). They only pad the header here.':'No options, so IHL stays at 5.';
+  }
+  return '';
+}
+function toStr(n){n=n>>>0;return [n>>>24,(n>>>16)&255,(n>>>8)&255,n&255].join('.')}
+function renderBuild(){
+  var H=build(P),ch=[];
+  var vals={version:'4',ihl:H.ihl+' ('+H.hl+' B)',dscp:String(P.dscp),ecn:('0'+P.ecn.toString(2)).slice(-2),total:fmt(H.total),id:String(P.id),
+    flags:'0'+(P.df?'1':'0')+(P.mf?'1':'0'),off:String(P.off),ttl:String(P.ttl),proto:P.proto+' '+(PROTO[P.proto]||''),ck:'0x'+hex(H.ck,4),
+    src:toStr(P.src),dst:toStr(P.dst),opt:P.opt?'4 bytes (01 01 01 00)':'none'};
+  Object.keys(vals).forEach(function(k){if(lastVals[k]!==undefined&&lastVals[k]!==vals[k])ch.push(k)});
+  lastVals=vals;
+  var dg=$('#b-diagram');dg.innerHTML=diagramHTML(vals,bSel);
+  ch.forEach(function(k){var el=dg.querySelector('[data-f="'+k+'"]');if(el)el.classList.add('changed')});
+  var d=$('#b-detail');d.style.setProperty('--cat','var(--k-'+BYID[bSel].cat+')');d.innerHTML=detailHTML(bSel,valueNote(bSel,H));
+  // hex
+  var rows=[],names=['Version, IHL, DSCP, ECN, Total Length','Identification, Flags, Offset','TTL, Protocol, Checksum','Source address','Destination address','Options'];
+  for(var r=0;r<H.bytes.length/4;r++){
+    var w=H.bytes.slice(r*4,r*4+4).map(function(x){return hex(x,2)});
+    if(r===2){w=[w[0],w[1],'<span class="ck">'+w[2]+w[3]+'</span>'];rows.push(w.join(' ')+'   ← '+names[r])}
+    else rows.push(w.join(' ')+'   ← '+names[r]);
+    if(r===2)rows[r]=hex(H.bytes[8],2)+' '+hex(H.bytes[9],2)+' <span class="ck">'+hex(H.bytes[10],2)+hex(H.bytes[11],2)+'</span>   ← '+names[2];
+  }
+  $('#b-hex').innerHTML=rows.join('\n');
+  // verify
+  var sum=0;for(var i=0;i<H.bytes.length;i+=2)sum+=(H.bytes[i]<<8)|H.bytes[i+1];while(sum>>>16)sum=(sum&0xFFFF)+(sum>>>16);
+  var okv=sum===0xFFFF;
+  var v=$('#b-verify');v.className='note '+(okv?'good':'bad');
+  v.innerHTML='Header length: <b>'+H.hl+' bytes</b>. Verification: adding all '+(H.hl/2)+' 16-bit words including the checksum gives <b>0x'+hex(sum,4)+'</b>'+(okv?' = 0xFFFF, so the header is accepted.':', not 0xFFFF, so the header would be rejected.');
+  // steps
+  var z=H.bytes.slice();z[10]=0;z[11]=0;var words=[],tot=0;
+  for(var j=0;j<z.length;j+=2){var wv=(z[j]<<8)|z[j+1];words.push(wv);tot+=wv}
+  var folded=tot,carry=0;while(folded>>>16){carry++;folded=(folded&0xFFFF)+(folded>>>16)}
+  $('#b-steps').innerHTML='<ol style="padding-left:20px;margin:0"><li>Set the checksum field to 0000 and list the header as 16-bit words:<div class="hex" style="margin:6px 0">'+words.map(function(x){return hex(x,4)}).join(' ')+'</div></li>'
+    +'<li>Add them: <span class="mono"><b>0x'+tot.toString(16).toUpperCase()+'</b></span></li>'
+    +'<li>Fold any carry above 16 bits back in (repeat until none is left): <span class="mono"><b>0x'+hex(folded,4)+'</b></span></li>'
+    +'<li>Invert every bit (ones\' complement): <span class="mono"><b>0x'+hex((~folded)&0xFFFF,4)+'</b></span>. That is the checksum.</li></ol>';
+}
+$('#p2').addEventListener('input',function(e){if(e.target.closest('.card')&&e.target.id&&e.target.id.indexOf('b-')===0){readInputs();renderBuild()}});
+$('#p2').addEventListener('change',function(e){if(e.target.id&&e.target.id.indexOf('b-')===0){readInputs();renderBuild()}});
+$('#b-diagram').addEventListener('click',function(e){var t=e.target.closest('.fld');if(!t)return;bSel=t.dataset.f;renderBuild()});
+readInputs();renderBuild();
+
+/* ---------- 3. TTL ---------- */
+var L={step:0};
+function journey(){
+  var t0=clamp($('#l-ttl').value,1,255),n=clamp($('#l-n').value,1,8),ev=[];
+  var base={src:P.src,dst:P.dst,proto:P.proto,pay:P.pay,dscp:P.dscp,ecn:P.ecn,id:P.id,off:0,df:P.df,mf:false,opt:false};
+  function ck(t){return hex(build(Object.assign({},base,{ttl:t})).ck,4)}
+  var ttl=t0;
+  ev.push({at:'Source host',ttl:ttl,ck:ck(ttl),note:'The host builds the packet with TTL '+ttl+' and computes the checksum.'});
+  for(var i=1;i<=n;i++){
+    var nt=ttl-1;
+    if(nt===0){ev.push({at:'Router '+i,ttl:0,ck:null,drop:true,note:'TTL fell to 0. Router '+i+' discards the packet and sends ICMP "Time Exceeded" (type 11) to the source.'});return {ev:ev,n:n,dead:i}}
+    ev.push({at:'Router '+i,ttl:nt,ck:ck(nt),note:'Subtracts 1 from TTL ('+ttl+' → '+nt+'), recomputes the checksum and forwards the packet.'});
+    ttl=nt;
+  }
+  ev.push({at:'Destination',ttl:ttl,ck:ck(ttl),note:'The packet arrives with TTL '+ttl+'. The destination does not decrement it; it passes the data to '+(PROTO[P.proto]||'the protocol')+'.',done:true});
+  return {ev:ev,n:n,dead:0};
+}
+function renderTTL(){
+  var J=journey(),ev=J.ev;if(L.step>ev.length-1)L.step=ev.length-1;
+  var names=['Source'].concat(Array.apply(null,Array(J.n)).map(function(_,i){return 'R'+(i+1)}),['Dest']);
+  var h='';
+  names.forEach(function(nm,i){
+    var cls='node';
+    if(i<L.step)cls+=' done';
+    if(i===L.step)cls+=ev[i]&&ev[i].drop?' dead':' on';
+    var e=ev[i];
+    h+=(i?'<div class="link'+(i<=L.step?' on':'')+'"></div>':'')+'<div class="'+cls+'">'+nm+'<small>'+(i<=L.step&&e?'TTL '+e.ttl:'')+'</small></div>';
+  });
+  $('#l-path').innerHTML=h;
+  var rows='<tr><th>Where</th><th>TTL</th><th>Header checksum</th><th>What happens</th></tr>';
+  for(var i=0;i<=L.step&&i<ev.length;i++){
+    var e=ev[i],p=ev[i-1];
+    rows+='<tr class="'+(e.drop?'drop':i===L.step?'cur':'')+'"><td><b>'+e.at+'</b></td><td class="mono'+(p&&p.ttl!==e.ttl?' chg':'')+'">'+e.ttl+'</td>'
+      +'<td class="mono'+(p&&e.ck&&p.ck!==e.ck?' chg':'')+'">'+(e.ck?'0x'+e.ck:'—')+'</td><td class="wrapt">'+esc(e.note)+'</td></tr>';
+  }
+  $('#l-table').innerHTML=rows;
+  var last=ev[L.step],m=$('#l-msg');
+  if(last.drop)m.innerHTML='<div class="note bad"><b>Packet dropped at router '+J.dead+'.</b> The starting TTL ('+$('#l-ttl').value+') was too small for a path of '+J.n+' routers. It needs a TTL of at least '+(J.n+1)+' to arrive.</div>';
+  else if(last.done)m.innerHTML='<div class="note good"><b>Delivered.</b> TTL went from '+ev[0].ttl+' to '+last.ttl+' after '+J.n+' routers, and the checksum changed at every hop.</div>';
+  else m.innerHTML='';
+  $('#l-step').disabled=(L.step>=ev.length-1);$('#l-run').disabled=(L.step>=ev.length-1);
+}
+$('#l-step').addEventListener('click',function(){L.step++;renderTTL()});
+$('#l-run').addEventListener('click',function(){L.step=999;renderTTL()});
+$('#l-reset').addEventListener('click',function(){L.step=0;renderTTL()});
+$('#l-ttl').addEventListener('input',function(){L.step=0;renderTTL()});
+$('#l-n').addEventListener('input',function(){L.step=0;renderTTL()});
+renderTTL();
+
+/* ---------- 4. FRAGMENTATION ---------- */
+function renderFrag(){
+  var pay=clamp($('#g-pay').value,0,65515),mtu=+$('#g-mtu').value,id=clamp($('#g-id').value,0,65535),df=$('#g-df').checked;
+  var maxd=Math.floor((mtu-20)/8)*8,frags=[],msg=$('#g-msg');
+  if(pay+20<=mtu){frags.push({off:0,len:pay,mf:false})}
+  else if(df){frags=[]}
+  else{var o=0;while(o<pay){var len=Math.min(maxd,pay-o);frags.push({off:o,len:len,mf:o+len<pay});o+=len}}
+  var table=$('#g-table'),bar=$('#g-bar'),sum=$('#g-sum');
+  if(pay+20>mtu&&df){
+    msg.innerHTML='<div class="note bad"><b>Packet dropped.</b> The packet is '+fmt(pay+20)+' bytes, the MTU is '+fmt(mtu)+' and DF is set. The router may not fragment it, so it discards it and returns ICMP "Destination Unreachable, Fragmentation Needed" (type 3, code 4). Path MTU Discovery uses exactly this reply to learn the right size.</div>';
+    table.innerHTML='';bar.innerHTML='<div class="fseg" style="flex:1;background:var(--bad);color:#fff">dropped</div>';sum.className='note';sum.innerHTML='Clear DF to see the fragments, or lower the data size to '+fmt(mtu-20)+' bytes or less.';return;
+  }
+  msg.innerHTML='';
+  var cols=['--k-format','--k-qos','--k-frag','--k-fwd','--k-addr'];
+  bar.innerHTML=frags.map(function(f,i){var w=pay?f.len/pay*100:100;return '<div class="fseg" style="width:'+w+'%;background:var(var'+cols[i%5].slice(1)+')" title="Fragment '+(i+1)+'">'+(w>9?'#'+(i+1)+'<small>'+fmt(f.len)+' B</small>':'')+'</div>'}).join('');
+  bar.innerHTML=frags.map(function(f,i){var w=pay?f.len/pay*100:100;return '<div class="fseg" style="width:'+w+'%;background:var('+cols[i%5]+')" title="Fragment '+(i+1)+'">'+(w>9?'#'+(i+1)+'<small>'+fmt(f.len)+' B</small>':'')+'</div>'}).join('');
+  var rows='<tr><th>#</th><th>Total Length</th><th>Identification</th><th>Flags (DF MF)</th><th>Fragment Offset</th><th>Data bytes carried</th></tr>';
+  frags.forEach(function(f,i){
+    rows+='<tr><td><b>'+(i+1)+'</b></td><td class="mono">'+fmt(f.len+20)+'</td><td class="mono">'+id+'</td><td class="mono">'+(df?'1':'0')+' '+(f.mf?'1':'0')+'</td>'
+      +'<td class="mono"><b>'+(f.off/8)+'</b> <span style="color:var(--muted)">(× 8 = '+fmt(f.off)+')</span></td><td class="mono">'+fmt(f.off)+' – '+fmt(Math.max(f.off,f.off+f.len-1))+' ('+fmt(f.len)+')</td></tr>';
+  });
+  table.innerHTML=rows;
+  if(frags.length===1){sum.className='note good';sum.innerHTML='The packet ('+fmt(pay+20)+' bytes) fits in the MTU of '+fmt(mtu)+' bytes, so it is sent <b>unfragmented</b>: MF = 0 and offset = 0.'}
+  else{
+    var ov=(frags.length-1)*20;
+    sum.className='note';sum.innerHTML='<b>'+frags.length+' fragments.</b> Each carries at most '+fmt(maxd)+' data bytes (the largest multiple of 8 that fits in '+fmt(mtu)+' − 20), so the offsets are multiples of '+(maxd/8)+'. Every fragment has its own 20-byte header, which adds <b>'+fmt(ov)+' bytes</b> of overhead. Only the <b>destination</b> reassembles them, using the Identification, the offsets and the last fragment (MF = 0).';
+  }
+}
+['#g-pay','#g-mtu','#g-id','#g-df'].forEach(function(s){$(s).addEventListener('input',renderFrag);$(s).addEventListener('change',renderFrag)});
+renderFrag();
+
+/* ---------- 5. QUIZ ---------- */
+var QS=[
+ ['What is the smallest valid IHL value, and how long is that header?',['5 → 20 bytes','4 → 16 bytes','20 → 20 bytes','0 → no header'],'IHL counts 32-bit words, and the fixed part of the header is 5 words, so the minimum is 5 × 4 = 20 bytes.'],
+ ['A packet has IHL = 8. How many bytes is its header?',['32 bytes','8 bytes','20 bytes','64 bytes'],'8 words × 4 bytes = 32 bytes, so there are 12 bytes of options.'],
+ ['Which field stops a packet from circling the network forever?',['TTL','Identification','Header Checksum','Fragment Offset'],'Each router decrements TTL, and a packet whose TTL reaches 0 is discarded.'],
+ ['Which field tells the destination whether to hand the data to TCP or UDP?',['Protocol','Version','DSCP','Flags'],'Protocol 6 means TCP and 17 means UDP.'],
+ ['Why must every router recompute the header checksum?',['Because TTL changes at every hop','Because the destination address changes','Because the data is encrypted','Because routers add options'],'The router decrements TTL, which changes the header, so the old checksum would no longer be valid.'],
+ ['A fragment has Fragment Offset = 185. At which byte of the original data does it start?',['1480','185','1850','23'],'The offset is counted in 8-byte units: 185 × 8 = 1480.'],
+ ['What is the largest value Total Length can hold?',['65,535 bytes','1,500 bytes','255 bytes','4,294,967,295 bytes'],'Total Length is a 16-bit field, and 2^16 − 1 = 65,535.'],
+ ['Which flag tells routers not to fragment a packet?',['DF','MF','Reserved bit','ECN'],'With DF set, a router that cannot forward the packet whole drops it and sends back an ICMP "Fragmentation needed" message.'],
+ ['In a fragmented packet, which fragment has MF = 0?',['The last fragment','The first fragment','Every fragment','Only the middle fragment'],'MF means "more fragments follow", so only the last fragment has MF = 0.'],
+ ['Which header field do routers mainly use to decide where to forward a packet?',['Destination Address','Source Address','Identification','DSCP'],'Routers look up the destination address in their routing table, using the longest matching prefix.'],
+ ['What does the IPv4 header checksum cover?',['Only the header','Header and data','Only the addresses','Only the options'],'It covers the header only. TCP and UDP carry their own checksums for the data.'],
+ ['What is ECN used for?',['Signalling congestion without dropping the packet','Choosing the destination','Counting hops','Identifying fragments'],'A congested router can set the ECN bits to ask the sender to slow down, instead of dropping packets.']
+];
+var Q={order:[],i:0,score:0,done:false};
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+function startQ(){Q.order=shuffle(QS.map(function(_,i){return i}));Q.i=0;Q.score=0;showQ()}
+function showQ(){
+  Q.done=false;$('#q-expl').innerHTML='';$('#q-next').hidden=true;
+  if(Q.i>=QS.length){
+    $('#q-score').textContent='Finished';$('#q-text').textContent='You scored '+Q.score+' out of '+QS.length+'.';
+    $('#q-opts').innerHTML='';$('#q-next').hidden=false;$('#q-next').textContent='Play again';return;
+  }
+  var q=QS[Q.order[Q.i]];
+  $('#q-score').textContent='Question '+(Q.i+1)+' of '+QS.length+' · Score '+Q.score;
+  $('#q-text').textContent=q[0];
+  $('#q-opts').innerHTML=shuffle(q[1].slice()).map(function(o){return '<button class="qopt" data-v="'+esc(o)+'">'+esc(o)+'</button>'}).join('');
+  $('#q-next').textContent=(Q.i===QS.length-1)?'See my score':'Next question';
+}
+$('#q-opts').addEventListener('click',function(e){
+  var t=e.target.closest('.qopt');if(!t||Q.done)return;Q.done=true;
+  var q=QS[Q.order[Q.i]],ok=t.dataset.v===q[1][0];if(ok)Q.score++;
+  [].slice.call(document.querySelectorAll('#q-opts .qopt')).forEach(function(b){b.disabled=true;if(b.dataset.v===q[1][0])b.classList.add('right');else if(b===t)b.classList.add('wrong')});
+  $('#q-expl').innerHTML='<div class="note '+(ok?'good':'bad')+'" style="margin-top:14px"><b>'+(ok?'Correct.':'Not quite.')+'</b> '+esc(q[2])+'</div>';
+  $('#q-score').textContent='Question '+(Q.i+1)+' of '+QS.length+' · Score '+Q.score;
+  $('#q-next').hidden=false;$('#q-next').focus();
+});
+$('#q-next').addEventListener('click',function(){
+  if(Q.i>=QS.length){startQ();return}
+  Q.i++;showQ();
+});
+startQ();
+})();
+</script>
+
+</body></html>
